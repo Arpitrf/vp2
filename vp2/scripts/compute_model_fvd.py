@@ -148,7 +148,7 @@ def compute_fvd(cfg):
         pred_video = (eval_preds["ag"]["rgb"] * 255).to(torch.uint8)
         gt_video_temp = gt_video.cpu()
         pred_video_temp = pred_video.cpu()
-        print("gt_video, pred_video: ", gt_video.shape, pred_video.shape)
+        # print("gt_video, pred_video: ", gt_video.shape, pred_video.shape)
 
         # save video to disk
         folder_name = 'fitvid_predictions'
