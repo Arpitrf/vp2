@@ -51,7 +51,7 @@ class PlanningAgent(Agent):
         self.log_dir = None
         self.actions = []
 
-    def act(self, t, obs_history, state_obs_history):
+    def act(self, t, obs_history, state_obs_history, env=None, folder_name=None):
         if t == 0:
             self.plan = [self.initial_action]
         elif self.steps_since_replan >= self.replan_interval or len(self.plan) == 0:
@@ -66,10 +66,13 @@ class PlanningAgent(Agent):
                 self.actions,
                 self.goal,
                 init_mean=init_mean,
+                env=env,
+                folder_name=folder_name
             )
             self.steps_since_replan = 0
         action = self.plan[0]
         self.actions.append(np.copy(action))
+        print("len(self.plan): ", len(self.plan))
         self.plan = self.plan[1:]
         self.steps_since_replan += 1
         return action

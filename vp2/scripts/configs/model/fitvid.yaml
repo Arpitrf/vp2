@@ -1,5 +1,8 @@
 _target_: vp2.models.torch_fitvid_interface.FitVidTorchModel
-checkpoint_dir: ???
+# checkpoint_dir: vp2/pretrained_models/fitvid/model_epoch33
+# config_file: vp2/pretrained_models/fitvid/config.json
+checkpoint_dir: vp2/pretrained_models/fitvid/model_multimodal_lower_grasped_weight
+config_file: vp2/pretrained_models/fitvid/config_normal.json
 n_past: 2
 planning_modalities: ${planning_modalities}
 epoch: null

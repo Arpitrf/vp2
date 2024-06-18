@@ -1,5 +1,5 @@
-_target_: vp2.envs.robosuite_env.RobosuiteEnv
-a_dim: 4 # change to 4
+_target_: vp2.envs.og_env.OGEnv
+a_dim: 7 # change to 4
 camera_names: ${camera_names}
 planning_modalities: ${planning_modalities}
 randomize_lighting: False
@@ -14,7 +14,7 @@ magic_env: False
 reset_xml: True
 
 # Goal configs
-goals_dataset: ./vp2/robosuite_benchmark_tasks/combined/rendered_256.hdf5
-traj_start_idx: -1
+goals_dataset: /code/small_grasp_dataset_test/dataset.hdf5
+traj_start_idx: 0
 use_final_goal_img: True
 goal_ims_from_data: False

@@ -35,12 +35,20 @@ class FitVidTorchModel(VideoPredictionModel):
         max_batch_size=800,
         epoch=None,
         device='cuda:0',
+        config_file=None
     ):
         hp = dict()
         # load HP from config file, if it exists
         self.checkpoint_file = self.get_checkpoint_file(checkpoint_dir, epoch)
         print("Loading checkpoint from", self.checkpoint_file)
-        config_path = os.path.join(os.path.dirname(self.checkpoint_file), "config.json")
+        # config_path = os.path.join(os.path.dirname(self.checkpoint_file), "config.json")
+
+        # change later
+        # config_path = to_absolute_path(config_file)
+        config_path = f'/home/arpit/test_projects/vp2/{config_file}'
+
+        print("config_path: ", config_path)
+        print("os.path.exists(config_path):", os.path.exists(config_path))
         if os.path.exists(config_path):
             print("Found config file! Loading hparams from it...")
             with open(config_path, "r") as config_file:

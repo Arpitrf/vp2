@@ -152,3 +152,77 @@ class BaseEnv(metaclass=ABCMeta):
             goal_state = states[-1]
 
             yield initial_state, goal_state, goals
+
+    def goal_generator_from_og_hdf5(self, file_path, camera_name):
+        """
+        Create a goal generator from a robosuite-formatted hdf5 file.
+        :param file_path: path to hdf5 goal file
+        :param camera_name: name of the camera feed to load goal RGB, depth, etc. from.
+        :return: generator object which yields a tuple of (start state, goal state, goal obs) for a different task
+        at each iteration
+        """
+        f = h5py.File(
+            file_path, "r", driver="core"
+        )  # core prevents MP collision, but should just load in at once?
+        demos = list(f.keys())
+        print("demos: ", demos)
+        # inds = np.argsort([int(elem[5:]) for elem in demos])
+        # demos = [demos[i] for i in inds]
+        for ind, ep in enumerate(demos):
+            # load all goal images
+            goals = dict()
+            if self.env_hparams["goal_ims_from_data"]:
+                goal_im_source = f[f"{ep}/goal_obs"]
+            else:
+                goal_im_source = f[f"{ep}/observations"]
+
+            for modality in self.env_hparams["planning_modalities"]:
+                # TODO: check why we neeed /255 here
+                if modality == "rgb":
+                    goals[modality] = goal_im_source["rgb"][:] / 255.0
+                elif modality == "depth":
+                    goals[modality] = goal_im_source[f"{camera_name}_depth"][:]
+                    if goals[modality].shape[-1] != 1:
+                        # Happens only for the iGibson renderer, TODO make cleaner
+                        goals[modality] = goals[modality][..., None]
+                elif modality == "normal":
+                    normal_goals = goal_im_source[f"{camera_name}_normal"][:] / 255.0
+                    goals[modality] = normal_goals
+            goals['rgb'] = goals['rgb'][:, :, :, :3]
+            print("goals: ", goals['rgb'].shape)
+            goals = ObservationList(goals)
+
+            # Determine which state from the trajectory or initial state to use as the start state
+            # First, if the data contains start indices, use those
+            if "start_index" in f[ep]:
+                start_idx = f[f"data/{ep}/start_index"][()]
+                print(f"Using start index {start_idx} loaded from task benchmark!")
+            # Otherwise, use the index specified in the hyperparameters
+            else:
+                if self.env_hparams["traj_start_idx"] == 1:
+                    raise ValueError(
+                        "Trajectory start index must be specified in hyperparameters if not in the goal dataset"
+                    )
+                else:
+                    print(
+                        f"Using default start index {self.env_hparams['traj_start_idx']} from config"
+                    )
+                    start_idx = self.env_hparams["traj_start_idx"]
+
+            # print("start_idx: ", start_idx)
+            # TODO: load states
+            directory_path = '/'.join(file_path.split('/')[:-1])
+            print("directory_path: ", directory_path)
+            initial_state = f'{directory_path}/{ep}_start.json'
+            goal_state = f'{directory_path}/{ep}_end.json'
+
+            # Use either the final goal image or entire image sequence as the goal
+            if self.env_hparams["use_final_goal_img"]:
+                # change later!!
+                # goals = goals[-1]
+                goals = goals[9]
+
+            else:
+                goals = goals[start_idx:]
+
+            yield initial_state, goal_state, goals

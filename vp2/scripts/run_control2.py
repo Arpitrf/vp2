@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, open_dict
+from PIL import Image
 
 from vp2.models.simulator_model import SimulatorModel
 from vp2.mpc.utils import *
@@ -24,16 +25,17 @@ def create_env(cfg):
 
 def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal_image):
 
-    _ = env.reset_to(initial_state)
+    # _ = env.reset_to(initial_state)
 
     if isinstance(agent, PlanningAgent) and isinstance(
         agent.optimizer.model, SimulatorModel
     ):
         agent.optimizer.model.reset_to(initial_state)
 
-    obs, _, _, _ = env.step(
+    obs, _, _, _ = env.og_env.step(
         np.zeros(env.action_dimension)
     )  # not taking this step delays iGibson observations, TODO debug this!!
+    obs = env.get_image_obs(obs)
 
     num_steps = 0
     observations = ObservationList.from_obs(obs, cfg)
@@ -41,7 +43,10 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
     observations.save_image(f"{folder_name}/obs_after_reset", index=0)
     observations.append(ObservationList.from_obs(obs, cfg))
     # print("observations: ", observations.data_dict['rgb'].shape)
-    state_observations = [env.get_state()]
+    
+    #TODO: implement state_observations
+    state_observations = []
+    # state_observations = [env.get_state()]
     # print("state_observation: ", state_observations[0].shape)
 
     observations.save_image(f"{folder_name}/obs_after_step", index=-1)
@@ -51,6 +56,7 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
 
     rews = []
 
+    concat_imgs = []
     while num_steps < cfg.max_traj_length:
         print(f"=================== Step {num_steps} ===================")
         # TODO: goal_length should eventually just be cfg.planning_horizon, but the length of predictions from model
@@ -69,12 +75,40 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
             goal_image = goal_image.append(
                 goal_image[-1].repeat(goal_length - len(goal_image))
             )
-        # print("33goal_image: ", goal_image.data_dict['rgb'].shape)
+        print("33goal_image: ", goal_image.data_dict['rgb'].shape)
 
         agent.set_goal(goal_image)
 
-        action = agent.act(num_steps, observations, state_observations)
-        obs, _, _, _ = env.step(action)
+        action = agent.act(num_steps, observations, state_observations, env, folder_name)
+
+        # # remove later
+        # temp_ideal_action = np.array([
+        #     [0.0023, 0.0085, -0.0419, 0.0203, 0.0035, -0.0260, 1.0000],
+        #     [0.0034, 0.0125, -0.0613, 0.0217, 0.0036, -0.0309, 1.0000],
+        #     [0.0033, 0.0127, -0.0619, 0.0211, 0.0037, -0.0289, 1.0000],
+        #     [0.0033, 0.0128, -0.0621, 0.0211, 0.0037, -0.0286, 1.0000],
+        #     [0.0033, 0.0128, -0.0621, 0.0209, 0.0034, -0.0287, 1.0000],
+        #     [0.0033, 0.0128, -0.0621, 0.0202, 0.0030, -0.0294, 1.0000],
+        #     [0.0003, 0.0014, -0.0401, -0.0003, -0.0004, -0.0013, 1.0000],
+        #     [0.0004, 0.0021, -0.0598, -0.0023, -0.0021, -0.0040, 1.0000],
+        #     [0.0004, 0.0022, -0.0601, -0.0024, -0.0024, -0.0039, 1.0000],
+        #     [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, -1.0000],
+        #     [0.0181, 0.0043, 0.0405, -0.0012, -0.0170, 0.0135, -1.0000],
+        #     [0.0353, 0.0183, 0.0686, 0.0407, -0.0522, 0.0300, -1.0000],
+        #     [0.0430, 0.0319, 0.0831, 0.0761, -0.0626, 0.0381, -1.0000],
+        #     [0.0442, 0.0374, 0.0888, 0.0807, -0.0571, 0.0349, -1.0000],
+        #     [0.0452, 0.0390, 0.0911, 0.0812, -0.0586, 0.0300, -1.0000],
+        #     [0.0455, 0.0394, 0.0924, 0.0829, -0.0582, 0.0297, -1.0000],
+        #     [0.0467, 0.0391, 0.0932, 0.0832, -0.0623, 0.0260, -1.0000],
+        #     [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+        # ])
+        # action = temp_ideal_action[num_steps]
+
+        # print("action: ", action)
+        obs = env.move_primitive(action)
+        obs = env.get_image_obs(obs)
+
+        # obs, _, _, _ = env.step(action)
 
         observations.append(ObservationList.from_obs(obs, cfg))
 
@@ -90,8 +124,11 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
         print(f"Step {num_steps}: Action = {action}")
         num_steps += 1
 
-    for state_observation in state_observations:
-        rews.append(env.compute_score(state_observation, goal_state))
+    # uncomment later
+    # for state_observation in state_observations:
+    #     rews.append(env.compute_score(state_observation, goal_state))
+
+    write_moviepy_video(env.concat_imgs, f"{folder_name}/traj.mp4")
 
     # Currently success is always returned True, even if the task is not solved, so each task is run once
     return observations, rews, True
@@ -136,19 +173,30 @@ def run_control(cfg):
 
     env = create_env(cfg.env)
     goal_itr = env.goal_generator()
+    for i, retval in enumerate(goal_itr):
+        if i == 8:
+            init_state, goal_state, goal_image = retval
+            break
+    # init_state, goal_state, goal_image = next(goal_itr)
+
+    # remove later
+    # _ = env.reset_to(init_state)
+    # for i in range(1000):
+    #     env.og.sim.step()
+
 
     folder_name = os.getcwd()
     print(f"Log directory : {os.getcwd()}")
 
     all_traj_rews = list()
 
-    # Resume previous run, if applicable
-    if cfg.resume:
-        num_trajectories_completed = get_already_completed_runs(folder_name)
-    else:
-        num_trajectories_completed = 0
+    # # Resume previous run, if applicable
+    # if cfg.resume:
+    #     num_trajectories_completed = get_already_completed_runs(folder_name)
+    # else:
+    #     num_trajectories_completed = 0
 
-    print("num_trajectories_completed: ", num_trajectories_completed)
+    # print("num_trajectories_completed: ", num_trajectories_completed)
 
     for t in range(cfg.num_trajectories):
         print(f"Running trajectory {t}...")
@@ -167,23 +215,23 @@ def run_control(cfg):
         # plt.show()
 
         traj_folder = f"{folder_name}/traj_{t}/"
-        # print("traj_folder: ", traj_folder)
+        print("traj_folder: ", traj_folder)
         # input()
 
-        if t < num_trajectories_completed:
-            # The trajectory has already been completed in a previous run. Skip it, but make sure goal and initial state
-            # are iterated.
-            assert os.path.exists(
-                traj_folder
-            ), "Trajectory folder does not exist, but control is resuming from a further point"
+    #     if t < num_trajectories_completed:
+    #         # The trajectory has already been completed in a previous run. Skip it, but make sure goal and initial state
+    #         # are iterated.
+    #         assert os.path.exists(
+    #             traj_folder
+    #         ), "Trajectory folder does not exist, but control is resuming from a further point"
 
-            # Load the rewards from the previous run for bookkeeping
-            all_traj_rews.append(np.load(f"{traj_folder}/traj_{t}_rews.npy"))
-            # Skip this trajectory
-            continue
+    #         # Load the rewards from the previous run for bookkeeping
+    #         all_traj_rews.append(np.load(f"{traj_folder}/traj_{t}_rews.npy"))
+    #         # Skip this trajectory
+    #         continue
 
         os.makedirs(traj_folder, exist_ok=True)
-        goal_image.log_gif(f"{traj_folder}/goal_gif")
+        goal_image.log_gif(f"{traj_folder}/goal_img")
         success = False
         while not success:
             # Try to run control on a starting state and goal repeatedly
@@ -193,18 +241,18 @@ def run_control(cfg):
                 cfg, traj_folder, agent, env, init_state, goal_state, goal_image
             )
 
-        obs_out.append(goal_image[-1].repeat(len(obs_out)), axis=1).log_gif(
-            f"{traj_folder}/traj_{t}_vis"
-        )
-        traj_rews = np.array(rews)
-        all_traj_rews.append(traj_rews)
-        np.save(f"{traj_folder}/traj_{t}_rews", traj_rews)
-        with open(f"{folder_name}/all_rews.txt", "a") as f:
-            writer = csv.writer(f)
-            writer.writerow([t, traj_rews.min()])
+    #     obs_out.append(goal_image[-1].repeat(len(obs_out)), axis=1).log_gif(
+    #         f"{traj_folder}/traj_{t}_vis"
+    #     )
+    #     traj_rews = np.array(rews)
+    #     all_traj_rews.append(traj_rews)
+    #     np.save(f"{traj_folder}/traj_{t}_rews", traj_rews)
+    #     with open(f"{folder_name}/all_rews.txt", "a") as f:
+    #         writer = csv.writer(f)
+    #         writer.writerow([t, traj_rews.min()])
 
-    # Clean up anything that the model created (like multiprocess spawns)
-    model.close()
+    # # Clean up anything that the model created (like multiprocess spawns)
+    # model.close()
 
 
 if __name__ == "__main__":

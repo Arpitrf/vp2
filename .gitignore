@@ -5,3 +5,5 @@ taming/
 *launch_files
 *plots
 *tmp
+pretrained_models/
+robosuite_benchmark_tasks/

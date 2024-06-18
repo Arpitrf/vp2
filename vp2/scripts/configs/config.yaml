@@ -1,14 +1,18 @@
 defaults:
   - model: fitvid
   - agent: planning_agent
-  - env: robosuite
+  - env: og #robosuite
   - sweep: single_task
 #  - hydra/launcher: submitit_slurm
 
+dataset: 
+  dataset_file:
+      - vp2/robosuite_benchmark_tasks/combined/5k_slice_rendered_256.hdf5 #vp2/robosuite_benchmark_tasks/combined/rendered_256.hdf5
+
 seed: 0
 num_processes: 16
-num_trajectories: 100
-max_traj_length: 15
+num_trajectories: 1
+max_traj_length: 12
 n_context: 2
 planning_horizon: 10
 camera_height: 64

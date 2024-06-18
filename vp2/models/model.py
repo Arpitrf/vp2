@@ -13,7 +13,10 @@ class VideoPredictionModel(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def get_checkpoint_file(self, checkpoint_dir, model_epoch):
-        checkpoint_dir = to_absolute_path(checkpoint_dir)
+        # change later
+        # checkpoint_dir = to_absolute_path(checkpoint_dir)
+        checkpoint_dir = f'/home/arpit/test_projects/vp2/{checkpoint_dir}'
+        
         if model_epoch is not None:
             if os.path.isfile(checkpoint_dir):
                 # If it's already pointing to a file, remove the file name

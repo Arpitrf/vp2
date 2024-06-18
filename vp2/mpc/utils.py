@@ -118,6 +118,21 @@ def write_moviepy_gif(obs_list, name, fps=5):
         name = f"{name}.gif"
     clip.write_gif(f"{name}", fps=fps)
 
+def write_moviepy_video(obs_list, name, fps=1):
+    print("pathhhhh: ", name)
+    obs_list = np.array(obs_list)
+    if isinstance(obs_list, np.floating) or obs_list.dtype == "float" or obs_list.dtype == "float32":
+        obs_list = (obs_list * 255).astype(np.int16)
+    obs_list = [np.int16(element) for element in obs_list]
+
+    from moviepy.editor import ImageSequenceClip
+
+    clip = ImageSequenceClip(obs_list, fps=fps)
+    if not name.endswith(".mp4"):
+        name = f"{name}.mp4"
+    clip.write_videofile(f"{name}", fps=fps)
+
+
 
 # TODO: Replace extract_image in simulator_model and deprecate
 def extract_image(obs, args):
@@ -271,3 +286,19 @@ def cat_dicts(dicts):
         else:
             out[k] = torch.cat([d[k] for d in dicts], dim=0)
     return out
+
+def hori_concatenate_image(images):
+    # Ensure the images have the same height
+    image1 = images[0]
+    concatenated_image = image1
+    for i in range(1, len(images)):
+        image_i = images[i]
+        if image1.shape[0] != image_i.shape[0]:
+            print("Images do not have the same height. Resizing the second image.")
+            height = image1.shape[0]
+            image_i = cv2.resize(image_i, (int(image_i.shape[1] * (height / image_i.shape[0])), height))
+
+        # Concatenate the images side by side
+        concatenated_image = np.concatenate((concatenated_image, image_i), axis=1)
+
+    return concatenated_image

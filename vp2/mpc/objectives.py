@@ -47,9 +47,12 @@ class SquaredError(Objective):
         self.key = key
 
     def compute_reward(self, prediction, goal):
+        print("prediction, goal: ", prediction[self.key].shape, goal[self.key].shape)
         cost = (prediction[self.key] - goal[self.key]) ** 2
+        print("cost: ", cost.shape)
         # sum works much better than mean -- mean has small magnitudes (and floating point errors?)
         reward = -sum(cost, dim=(1, 2, 3, 4))
+        print("reward: ", reward.shape)
         return reward[:, None, None]
 
 

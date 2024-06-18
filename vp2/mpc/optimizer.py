@@ -3,6 +3,7 @@ import numpy as np
 from vp2.mpc.utils import (
     ObservationList,
     write_moviepy_gif,
+    write_moviepy_video,
     generate_text_square,
 )
 
@@ -33,4 +34,5 @@ class Optimizer(metaclass=abc.ABCMeta):
         # Add the score images to the visualizations
         vis_preds_image = np.concatenate((vis_preds_image, score_image), axis=1)
         # Write the gif
-        write_moviepy_gif(list(vis_preds_image), filename, fps=fps)
+        # write_moviepy_gif(list(vis_preds_image), filename, fps=fps)
+        write_moviepy_video(list(vis_preds_image), filename)
