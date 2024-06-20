@@ -131,7 +131,7 @@ def compute_fvd(cfg):
         batch["actions"] = batch["actions"].float()
         if isinstance(model, FitVidTorchModel):
             with torch.no_grad():
-                _, eval_preds = model.model.evaluate(batch, compute_metrics=False)
+                _, eval_preds, eval_grasped_preds = model.model.evaluate(batch, compute_metrics=False)
         else:
             with torch.no_grad():
                 batch_prepped = dict()
@@ -158,6 +158,12 @@ def compute_fvd(cfg):
             concat_img = hori_concatenate_image([gt_video_temp[0][ind].permute(1,2,0), pred_video_temp[0][ind].permute(1,2,0)])
             concat_imgs.append(concat_img)
         write_moviepy_video(concat_imgs, f'{folder_name}/{i:05d}.mp4')
+
+        # get grasped preds
+        gt_grasped = batch["grasped"][:, 1:]
+        pred_grasped = eval_grasped_preds["ag"]
+        print("gt_grasped, pred_grasped: ", gt_grasped, pred_grasped)
+        input()
 
         # if i > -1:
         #     fig, ax = plt.subplots(2, 6)

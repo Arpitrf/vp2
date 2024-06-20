@@ -66,6 +66,9 @@ class FitVidTorchModel(VideoPredictionModel):
                     hp[predictor]["pretrained_weight_path"]
                 )
 
+        # added by Arpit
+        hp['model_kwargs']['grasped_dim'] = 1
+
         print("Loading FitVid model with hyperparameters:")
         pprint.pprint(hp)
         self.model = FitVid(**hp)
