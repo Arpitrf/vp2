@@ -131,7 +131,7 @@ def compute_fvd(cfg):
         batch["actions"] = batch["actions"].float()
         if isinstance(model, FitVidTorchModel):
             with torch.no_grad():
-                _, eval_preds, eval_grasped_preds = model.model.evaluate(batch, compute_metrics=False)
+                _, eval_grasped_preds = model.model.evaluate(batch, compute_metrics=False)
         else:
             with torch.no_grad():
                 batch_prepped = dict()
@@ -144,24 +144,25 @@ def compute_fvd(cfg):
                     torch.tensor(outputs["rgb"][:, 1:]).permute(0, 1, 4, 2, 3).cuda()
                 )
                 eval_preds = dict(ag=outputs)
-        gt_video = (batch["video"][:, 1:] * 255).to(torch.uint8)
-        pred_video = (eval_preds["ag"]["rgb"] * 255).to(torch.uint8)
-        gt_video_temp = gt_video.cpu()
-        pred_video_temp = pred_video.cpu()
+        # gt_video = (batch["video"][:, 1:] * 255).to(torch.uint8)
+        # pred_video = (eval_preds["ag"]["rgb"] * 255).to(torch.uint8)
+        # gt_video_temp = gt_video.cpu()
+        # pred_video_temp = pred_video.cpu()
         # print("gt_video, pred_video: ", gt_video.shape, pred_video.shape)
 
         # save video to disk
-        folder_name = 'fitvid_predictions'
-        os.makedirs(folder_name, exist_ok=True)
-        concat_imgs = []
-        for ind in range(len(gt_video_temp[0])):
-            concat_img = hori_concatenate_image([gt_video_temp[0][ind].permute(1,2,0), pred_video_temp[0][ind].permute(1,2,0)])
-            concat_imgs.append(concat_img)
-        write_moviepy_video(concat_imgs, f'{folder_name}/{i:05d}.mp4')
+        # folder_name = 'fitvid_predictions'
+        # os.makedirs(folder_name, exist_ok=True)
+        # concat_imgs = []
+        # for ind in range(len(gt_video_temp[0])):
+        #     concat_img = hori_concatenate_image([gt_video_temp[0][ind].permute(1,2,0), pred_video_temp[0][ind].permute(1,2,0)])
+        #     concat_imgs.append(concat_img)
+        # write_moviepy_video(concat_imgs, f'{folder_name}/{i:05d}.mp4')
 
         # get grasped preds
-        gt_grasped = batch["grasped"][:, 1:]
-        pred_grasped = eval_grasped_preds["ag"]
+        np.set_printoptions(suppress=True)
+        gt_grasped = np.array(batch["grasped"][:, 1:].cpu())
+        pred_grasped = np.array(eval_grasped_preds["non_ag"].cpu())
         print("gt_grasped, pred_grasped: ", gt_grasped, pred_grasped)
         input()
 
@@ -181,23 +182,23 @@ def compute_fvd(cfg):
         #     ax[1][5].imshow(pred_video_temp[0][6].permute(1,2,0))
         #     plt.show()
         
-        with torch.no_grad():
+        # with torch.no_grad():
 
-            lpips_official_score = lpips_official(
-                flatten_image(gt_video / 255.0) * 2 - 1,
-                flatten_image(pred_video / 255.0) * 2 - 1,
-            )
+        #     lpips_official_score = lpips_official(
+        #         flatten_image(gt_video / 255.0) * 2 - 1,
+        #         flatten_image(pred_video / 255.0) * 2 - 1,
+        #     )
 
-        lpips_all.append(lpips_official_score.mean())
-        ssim_all.append(
-            piq.ssim(flatten_image(gt_video / 255.0), flatten_image(pred_video / 255.0))
-        )
-        mse.append(
-            torch.mean(
-                ((batch["video"][:, 1:] - eval_preds["ag"]["rgb"]) ** 2),
-                dim=(1, 2, 3, 4),
-            )
-        )
+        # lpips_all.append(lpips_official_score.mean())
+        # ssim_all.append(
+        #     piq.ssim(flatten_image(gt_video / 255.0), flatten_image(pred_video / 255.0))
+        # )
+        # mse.append(
+        #     torch.mean(
+        #         ((batch["video"][:, 1:] - eval_preds["ag"]["rgb"]) ** 2),
+        #         dim=(1, 2, 3, 4),
+        #     )
+        # )
         # real_embeddings.append(get_fvd_logits(gt_video).detach().cpu())
         # predicted_embeddings.append(get_fvd_logits(pred_video).detach().cpu())
         pbar.update(1)
