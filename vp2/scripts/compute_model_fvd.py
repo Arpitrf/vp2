@@ -10,6 +10,7 @@ import hydra
 import matplotlib.pyplot as plt
 import pprint
 from hydra.utils import instantiate
+import wandb
 
 from fitvid.utils.fvd.fvd import get_fvd_logits, frechet_distance
 from fitvid.utils.utils import dict_to_cuda
@@ -24,6 +25,18 @@ N_BATCHES = 32
 
 @hydra.main(config_path="configs", config_name="config")
 def compute_fvd(cfg):
+    log_wandb = True
+    ag_mode = 'non_ag' # ag (autoregressive) or non_ag
+    np.set_printoptions(suppress=True)
+    if log_wandb:
+        wandb.login()
+        run = wandb.init(
+            project="VMPC",
+            notes="trial experiment"
+        )
+        table_1 = wandb.Table(columns=["F_name", "Action", "Video", "Pixel Error", "Grasped State", "Grasped State Errror"])
+        rows = []
+
     pprint.pprint(dict(cfg))
     lpips_official = lpips.LPIPS(net="alex").cuda()
     model = instantiate(cfg.model)
@@ -52,7 +65,7 @@ def compute_fvd(cfg):
 
     # dataset_file = '/home/arpit/test_projects/vp2/vp2/robosuite_benchmark_tasks/5k_slice_rendered_256.hdf5'
     # dataset_name = 'robosuite_benchmark_tasks/combined'
-    dataset_file = "/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test/dataset.hdf5"
+    dataset_file = "/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test_2/dataset.hdf5"
     dataset_name = 'og'
 
     # print("cfg: ", cfg.keys())
@@ -145,10 +158,10 @@ def compute_fvd(cfg):
                 )
                 eval_preds = dict(ag=outputs)
         gt_video = (batch["video"][:, 1:] * 255).to(torch.uint8)
-        pred_video = (eval_preds["ag"]["rgb"] * 255).to(torch.uint8)
+        pred_video = (eval_preds[ag_mode]["rgb"] * 255).to(torch.uint8)
         gt_video_temp = gt_video.cpu()
         pred_video_temp = pred_video.cpu()
-        # print("gt_video, pred_video: ", gt_video.shape, pred_video.shape)
+        print("gt_video, pred_video: ", gt_video.shape, pred_video.shape)
 
         # save video to disk
         folder_name = 'fitvid_predictions'
@@ -161,25 +174,27 @@ def compute_fvd(cfg):
 
         # get grasped preds
         gt_grasped = batch["grasped"][:, 1:]
-        pred_grasped = eval_grasped_preds["ag"]
+        gt_grasped = np.squeeze(gt_grasped.cpu().numpy())
+        pred_grasped = eval_grasped_preds[ag_mode]
+        pred_grasped = np.squeeze(pred_grasped.cpu().numpy())
         print("gt_grasped, pred_grasped: ", gt_grasped, pred_grasped)
-        input()
+        # input()
 
-        # if i > -1:
-        #     fig, ax = plt.subplots(2, 6)
-        #     ax[0][0].imshow(gt_video_temp[0][0].permute(1,2,0))
-        #     ax[0][1].imshow(gt_video_temp[0][2].permute(1,2,0))
-        #     ax[0][2].imshow(gt_video_temp[0][3].permute(1,2,0))
-        #     ax[0][3].imshow(gt_video_temp[0][4].permute(1,2,0))
-        #     ax[0][4].imshow(gt_video_temp[0][5].permute(1,2,0))
-        #     ax[0][5].imshow(gt_video_temp[0][6].permute(1,2,0))
-        #     ax[1][0].imshow(pred_video_temp[0][0].permute(1,2,0))
-        #     ax[1][1].imshow(pred_video_temp[0][2].permute(1,2,0))
-        #     ax[1][2].imshow(pred_video_temp[0][3].permute(1,2,0))
-        #     ax[1][3].imshow(pred_video_temp[0][4].permute(1,2,0))
-        #     ax[1][4].imshow(pred_video_temp[0][5].permute(1,2,0))
-        #     ax[1][5].imshow(pred_video_temp[0][6].permute(1,2,0))
-        #     plt.show()
+        if i > -1:
+            fig, ax = plt.subplots(2, 6)
+            ax[0][0].imshow(gt_video_temp[0][0].permute(1,2,0))
+            ax[0][1].imshow(gt_video_temp[0][2].permute(1,2,0))
+            ax[0][2].imshow(gt_video_temp[0][3].permute(1,2,0))
+            ax[0][3].imshow(gt_video_temp[0][4].permute(1,2,0))
+            ax[0][4].imshow(gt_video_temp[0][5].permute(1,2,0))
+            ax[0][5].imshow(gt_video_temp[0][6].permute(1,2,0))
+            ax[1][0].imshow(pred_video_temp[0][0].permute(1,2,0))
+            ax[1][1].imshow(pred_video_temp[0][2].permute(1,2,0))
+            ax[1][2].imshow(pred_video_temp[0][3].permute(1,2,0))
+            ax[1][3].imshow(pred_video_temp[0][4].permute(1,2,0))
+            ax[1][4].imshow(pred_video_temp[0][5].permute(1,2,0))
+            ax[1][5].imshow(pred_video_temp[0][6].permute(1,2,0))
+            plt.show()
         
         with torch.no_grad():
 
@@ -198,6 +213,17 @@ def compute_fvd(cfg):
                 dim=(1, 2, 3, 4),
             )
         )
+
+        # for logging to wandb
+        if log_wandb:
+            # batch["actions"].cpu().numpy()[0]
+            rows.append([f'{i:05d}', 
+                         0, 
+                         wandb.Video(f'{folder_name}/{i:05d}.mp4', fps=30, format="mp4"), 
+                         np.array2string(mse[-1].cpu().numpy()), 
+                         np.array2string(gt_grasped)+'\n'+np.array2string(pred_grasped), #np.array2string(np.array([gt_grasped.cpu().numpy(), pred_grasped.cpu().numpy()])), 
+                         np.sum(gt_grasped != pred_grasped)])
+
         # real_embeddings.append(get_fvd_logits(gt_video).detach().cpu())
         # predicted_embeddings.append(get_fvd_logits(pred_video).detach().cpu())
         pbar.update(1)
@@ -205,26 +231,32 @@ def compute_fvd(cfg):
             break
     pbar.close()
 
-    # real_embeddings = torch.cat(real_embeddings, dim=0)
-    # predicted_embeddings = torch.cat(predicted_embeddings, dim=0)
-    # result = frechet_distance(real_embeddings, predicted_embeddings)
-    mse = torch.cat(mse, dim=0).mean()
-    ssim_all = torch.stack(ssim_all).mean()
-    lpips_all = torch.stack(lpips_all, dim=0).mean()
-    # print("FVD: {}".format(result.item()))
-    print("MSE: {}".format(mse.item()))
-    print("LPIPS: {}".format(lpips_all.item()))
-    print("SSIM: {}".format(ssim_all.item()))
+    # # real_embeddings = torch.cat(real_embeddings, dim=0)
+    # # predicted_embeddings = torch.cat(predicted_embeddings, dim=0)
+    # # result = frechet_distance(real_embeddings, predicted_embeddings)
+    # mse = torch.cat(mse, dim=0).mean()
+    # ssim_all = torch.stack(ssim_all).mean()
+    # lpips_all = torch.stack(lpips_all, dim=0).mean()
+    # # print("FVD: {}".format(result.item()))
+    # print("MSE: {}".format(mse.item()))
+    # print("LPIPS: {}".format(lpips_all.item()))
+    # print("SSIM: {}".format(ssim_all.item()))
 
-    metrics[key] = dict(
-        # fvd=result.item(),
-        mse=mse.item(),
-        lpips=lpips_all.item(),
-        ssim=ssim_all.item(),
-    )
+    # metrics[key] = dict(
+    #     # fvd=result.item(),
+    #     mse=mse.item(),
+    #     lpips=lpips_all.item(),
+    #     ssim=ssim_all.item(),
+    # )
 
-    with open(save_metrics_path, "w") as f:
-        json.dump(metrics, f)
+    # with open(save_metrics_path, "w") as f:
+    #     json.dump(metrics, f)
+
+    if log_wandb:
+        table_1 = wandb.Table(
+            columns=table_1.columns, data=rows
+        )
+        run.log({"Videos": table_1}) 
 
 
 if __name__ == "__main__":
