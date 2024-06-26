@@ -10,6 +10,7 @@ import hydra
 import matplotlib.pyplot as plt
 import pprint
 from hydra.utils import instantiate
+import wandb
 
 from fitvid.utils.fvd.fvd import get_fvd_logits, frechet_distance
 from fitvid.utils.utils import dict_to_cuda
@@ -24,6 +25,18 @@ N_BATCHES = 32
 
 @hydra.main(config_path="configs", config_name="config")
 def compute_fvd(cfg):
+    log_wandb = True
+    ag_mode = 'ag' # ag (autoregressive) or non_ag
+    np.set_printoptions(suppress=True, precision=3)
+    if log_wandb:
+        wandb.login()
+        run = wandb.init(
+            project="VMPC",
+            notes="trial experiment"
+        )
+        table_1 = wandb.Table(columns=["F_name", "Action", "Video", "Pixel Error"])
+        rows = []
+
     pprint.pprint(dict(cfg))
     lpips_official = lpips.LPIPS(net="alex").cuda()
     model = instantiate(cfg.model)
@@ -52,7 +65,7 @@ def compute_fvd(cfg):
 
     # dataset_file = '/home/arpit/test_projects/vp2/vp2/robosuite_benchmark_tasks/5k_slice_rendered_256.hdf5'
     # dataset_name = 'robosuite_benchmark_tasks/combined'
-    dataset_file = "/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test/dataset.hdf5"
+    dataset_file = "/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test_2/dataset.hdf5"
     dataset_name = 'og'
 
     # print("cfg: ", cfg.keys())
@@ -145,7 +158,7 @@ def compute_fvd(cfg):
                 )
                 eval_preds = dict(ag=outputs)
         gt_video = (batch["video"][:, 1:] * 255).to(torch.uint8)
-        pred_video = (eval_preds["ag"]["rgb"] * 255).to(torch.uint8)
+        pred_video = (eval_preds[ag_mode]["rgb"] * 255).to(torch.uint8)
         gt_video_temp = gt_video.cpu()
         pred_video_temp = pred_video.cpu()
         # print("gt_video, pred_video: ", gt_video.shape, pred_video.shape)
@@ -188,16 +201,32 @@ def compute_fvd(cfg):
         )
         mse.append(
             torch.mean(
-                ((batch["video"][:, 1:] - eval_preds["ag"]["rgb"]) ** 2),
+                ((batch["video"][:, 1:] - eval_preds[ag_mode]["rgb"]) ** 2),
                 dim=(1, 2, 3, 4),
             )
         )
         # real_embeddings.append(get_fvd_logits(gt_video).detach().cpu())
         # predicted_embeddings.append(get_fvd_logits(pred_video).detach().cpu())
+
+        # for logging to wandb
+        if log_wandb:
+            # batch["actions"].cpu().numpy()[0]
+            rows.append([f'{i:05d}', 
+                         0, 
+                         wandb.Video(f'{folder_name}/{i:05d}.mp4', fps=30, format="mp4"), 
+                         np.array2string(mse[-1].cpu().numpy()), 
+            ])
+
+
         pbar.update(1)
         if i == N_BATCHES:
             break
     pbar.close()
+    if log_wandb:
+        table_1 = wandb.Table(
+            columns=table_1.columns, data=rows
+        )
+        run.log({"Videos": table_1})
 
     # real_embeddings = torch.cat(real_embeddings, dim=0)
     # predicted_embeddings = torch.cat(predicted_embeddings, dim=0)
