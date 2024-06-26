@@ -164,7 +164,7 @@ class BaseEnv(metaclass=ABCMeta):
         f = h5py.File(
             file_path, "r", driver="core"
         )  # core prevents MP collision, but should just load in at once?
-        demos = list(f.keys())
+        demos = list(f['data'].keys())
         print("demos: ", demos)
         # inds = np.argsort([int(elem[5:]) for elem in demos])
         # demos = [demos[i] for i in inds]
@@ -172,9 +172,9 @@ class BaseEnv(metaclass=ABCMeta):
             # load all goal images
             goals = dict()
             if self.env_hparams["goal_ims_from_data"]:
-                goal_im_source = f[f"{ep}/goal_obs"]
+                goal_im_source = f[f"data/{ep}/goal_obs"]
             else:
-                goal_im_source = f[f"{ep}/observations"]
+                goal_im_source = f[f"data/{ep}/observations"]
 
             for modality in self.env_hparams["planning_modalities"]:
                 # TODO: check why we neeed /255 here
@@ -194,7 +194,7 @@ class BaseEnv(metaclass=ABCMeta):
 
             # Determine which state from the trajectory or initial state to use as the start state
             # First, if the data contains start indices, use those
-            if "start_index" in f[ep]:
+            if "start_index" in f[f"data/{ep}"]:
                 start_idx = f[f"data/{ep}/start_index"][()]
                 print(f"Using start index {start_idx} loaded from task benchmark!")
             # Otherwise, use the index specified in the hyperparameters

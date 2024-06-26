@@ -14,7 +14,7 @@ class ObservationList:
     H and W are the height and width of the image, and C is the number of channels.
     """
 
-    POSSIBLE_MODALITIES = ["rgb", "depth", "normal", "policy"]
+    POSSIBLE_MODALITIES = ["rgb", "depth", "normal", "policy", "grasped"]
 
     def __init__(self, data_dict, add_time_dimension=False, image_shape=(64, 64)):
         self.data_dict = data_dict
@@ -55,6 +55,11 @@ class ObservationList:
             elif modality == "normal":
                 img = obs[modality].copy() / 255.0
             data_dict[modality] = img[None]  # Add time dimension
+            print("-------data_dict[modality]: ", data_dict[modality].shape)
+        # adding "grasped" state modality
+        grasped = np.array([obs['grasped']])
+        data_dict['grasped'] = grasped[None]
+
         return ObservationList(data_dict)
 
     @classmethod

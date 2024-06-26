@@ -22,12 +22,11 @@ from vp2.mpc.utils import write_moviepy_video, hori_concatenate_image
 
 N_BATCHES = 32
 
-
 @hydra.main(config_path="configs", config_name="config")
 def compute_fvd(cfg):
     log_wandb = True
-    ag_mode = 'non_ag' # ag (autoregressive) or non_ag
-    np.set_printoptions(suppress=True)
+    ag_mode = 'ag' # ag (autoregressive) or non_ag
+    np.set_printoptions(suppress=True, precision=3)
     if log_wandb:
         wandb.login()
         run = wandb.init(

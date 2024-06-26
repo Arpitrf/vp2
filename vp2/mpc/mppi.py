@@ -53,22 +53,22 @@ class MPPIOptimizer(Optimizer):
         self.log_every = log_every
         self._model_prediction_times = list()
 
-        # remove later
-        import h5py
-        import cv2
-        f = h5py.File('/home/arpit/test_projects/OmniGibson/small_grasp_dataset_test/dataset.hdf5', "r") 
-        gt_preds = np.array(f['episode_00001']['observations']['rgb'])[:,:,:,:3]
-        self.gt_preds = []
-        for i in range(len(gt_preds)):
-            img = gt_preds[i].copy()
-            self.gt_preds.append(cv2.resize(img, (64, 64)))
-            # import matplotlib.pyplot as plt
-            # fig, ax = plt.subplots(1,2)
-            # ax[0].imshow(img)
-            # ax[1].imshow(self.gt_preds[-1])
-            # plt.show()
-        # print("self.gt_preds: ", self.gt_preds.shape)
-        # input()
+        # # remove later
+        # import h5py
+        # import cv2
+        # f = h5py.File('/home/arpit/test_projects/OmniGibson/small_grasp_dataset_test/dataset.hdf5', "r") 
+        # gt_preds = np.array(f['episode_00001']['observations']['rgb'])[:,:,:,:3]
+        # self.gt_preds = []
+        # for i in range(len(gt_preds)):
+        #     img = gt_preds[i].copy()
+        #     self.gt_preds.append(cv2.resize(img, (64, 64)))
+        #     # import matplotlib.pyplot as plt
+        #     # fig, ax = plt.subplots(1,2)
+        #     # ax[0].imshow(img)
+        #     # ax[1].imshow(self.gt_preds[-1])
+        #     # plt.show()
+        # # print("self.gt_preds: ", self.gt_preds.shape)
+        # # input()
 
     def update_dist(self, samples, scores):
         # actions: array with shape [num_samples, time, action_dim]
@@ -149,6 +149,7 @@ class MPPIOptimizer(Optimizer):
         n_ctxt = self.model.num_context
         print("action_history: ", np.array(action_history).shape)
         print("obs_history: ", obs_history.data_dict['rgb'].shape)
+        print("grasped_history: ", obs_history.data_dict['grasped'].shape)
         print("state_history: ", np.array(state_history).shape)
 
         action_history = action_history[-(n_ctxt - 1) :]
@@ -170,6 +171,8 @@ class MPPIOptimizer(Optimizer):
             mu[len(init_mean) :] = init_mean[-1]
         else:
             mu = np.zeros((self.horizon, self.a_dim))
+            # check if this is correct
+            mu[:, -1] = 1.0
         std = self.init_std[None].repeat(self.horizon, axis=0)
 
         new_action_samples = self.sampler.sample_actions(self.num_samples, mu, std)
@@ -186,20 +189,26 @@ class MPPIOptimizer(Optimizer):
         print("new_action_samples: ", new_action_samples.shape)
         action_samples = np.concatenate((context_actions, new_action_samples), axis=1)
         
-        # print("action_samples: ", action_samples.shape, action_samples[0,0,:])
+        print("action_samples: ", action_samples.shape)
         # for i in range(10):
         #     for j in range(self.horizon):
         #         print("norms: ", np.linalg.norm(action_samples[i, j, :3]))
         # input()
 
+        print("oobs video: ", np.array(obs_history[self.model.base_prediction_modality]).shape)
         batch = {
             "video": np.tile(
                 np.array(obs_history[self.model.base_prediction_modality])[None],
                 (self.num_samples, 1, 1, 1, 1),
             ),
+            "grasped": np.tile(
+                np.array(obs_history['grasped'])[None],
+                (self.num_samples, 1, 1)
+            ),
             "actions": action_samples,
             "state_obs": state_history,
         }
+        print("batch[grasped]: ", batch['grasped'].shape)
         print("batch[video]: ", batch['video'].shape)
         import matplotlib.pyplot as plt
         # plt.imshow(batch['video'][0, 1])
@@ -208,8 +217,17 @@ class MPPIOptimizer(Optimizer):
 
         pred_start_time = time.time()
         predictions = self.model(batch)
-        print("predictions: ", predictions['rgb'][0,0,:2, :2, :])
+        # print("predictions: ", predictions['rgb'][0,0,:2, :2, :])
         print("predictions: ", predictions['rgb'].shape, type(predictions['rgb']), type(predictions['rgb'][0,0,0,0,0]))
+        # print("grasped predictions: ", predictions['grasped'].shape, predictions['grasped'][:3])
+        predictions['grasped'] = np.round(predictions['grasped'])
+        counter = 0
+        for j in range(len(predictions['grasped'])):
+            # print("--j", np.squeeze(predictions['grasped'][j]))
+            if any(np.squeeze(predictions['grasped'][j])):
+                counter += 1
+        print("Number of trajectories with grasped predictions: ", counter)
+        input()
         prediction_time = time.time() - pred_start_time
         self._model_prediction_times.append(prediction_time)
         print(f"Prediction time {prediction_time}")
@@ -275,10 +293,11 @@ class MPPIOptimizer(Optimizer):
         # plt.show()
 
         # print('best actions:', best_actions)
-        if t % self.log_every == 0:
-            self.log_best_plans(
-                f"{log_dir}/step_{t}_best_plan", vis_preds, goal, best_rewards
-            )
+        # uncomment later
+        # if t % self.log_every == 0:
+        #     self.log_best_plans(
+        #         f"{log_dir}/step_{t}_best_plan", vis_preds, goal, best_rewards
+        #     )
 
         mu, std = self.update_dist(action_samples[:, n_ctxt - 1 :], rewards)
         print(f"mu shape = {mu.shape}: {mu}")

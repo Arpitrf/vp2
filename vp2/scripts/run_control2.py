@@ -1,5 +1,6 @@
 # Run control using Visual Foresight.
 import numpy as np
+np.set_printoptions(suppress=True, precision=3)
 import h5py
 import datetime
 import csv
@@ -36,6 +37,8 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
         np.zeros(env.action_dimension)
     )  # not taking this step delays iGibson observations, TODO debug this!!
     obs = env.get_image_obs(obs)
+    grasped_state = env.robot.custom_is_grasping()
+    obs['grasped'] = grasped_state
 
     num_steps = 0
     observations = ObservationList.from_obs(obs, cfg)
@@ -107,6 +110,8 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
         # print("action: ", action)
         obs = env.move_primitive(action)
         obs = env.get_image_obs(obs)
+        grasped_state = env.robot.custom_is_grasping()
+        obs['grasped'] = grasped_state
 
         # obs, _, _, _ = env.step(action)
 
@@ -122,6 +127,7 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
         state_observations.append(env.get_state())
         # rews.append(env.get_reward())
         print(f"Step {num_steps}: Action = {action}")
+        input()
         num_steps += 1
 
     # uncomment later
@@ -174,7 +180,7 @@ def run_control(cfg):
     env = create_env(cfg.env)
     goal_itr = env.goal_generator()
     for i, retval in enumerate(goal_itr):
-        if i == 8:
+        if i == 4:
             init_state, goal_state, goal_image = retval
             break
     # init_state, goal_state, goal_image = next(goal_itr)
@@ -211,8 +217,8 @@ def run_control(cfg):
         # print("init_state[model]: ", init_state['model'])
         # print("goal_state: ", goal_state.shape)
         # print("goal_image: ", goal_image.data_dict['rgb'].shape)
-        # plt.imshow(goal_image.data_dict['rgb'][0])
-        # plt.show()
+        plt.imshow(goal_image.data_dict['rgb'][0])
+        plt.show()
 
         traj_folder = f"{folder_name}/traj_{t}/"
         print("traj_folder: ", traj_folder)

@@ -40,4 +40,16 @@ class CorrelatedNoiseSampler(GaussianSampler):
         print("---", np.array(noise_samples)[0,0], np.array(noise_samples)[1,0], np.array(noise_samples)[2,0])
         noise_samples = np.stack(noise_samples, axis=1)
         print("33noise_samples: ", np.array(noise_samples).shape)
-        return np.expand_dims(mu, 0) + noise_samples
+        ret_actions = np.expand_dims(mu, 0) + noise_samples
+        # change certain actions to grasp
+        num_changes = np.random.randint(5, 30)
+        bs_indices = np.random.randint(0, 200, num_changes)
+        traj_indices = np.random.randint(0, 10, num_changes)
+        for i in range(len(bs_indices)):
+            ret_actions[bs_indices[i], traj_indices[i]] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0])
+            ret_actions[bs_indices[i], traj_indices[i]:, -1] = -1.0
+            # print(bs_indices[i], traj_indices[i], ret_actions[bs_indices[i]])
+            # print("**", ret_actions[bs_indices[i], traj_indices[i]:, -1])
+            # print("------------------")
+        # print("ret_actions.shape: ", ret_actions.shape)
+        return ret_actions

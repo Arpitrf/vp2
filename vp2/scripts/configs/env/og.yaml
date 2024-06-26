@@ -14,7 +14,7 @@ magic_env: False
 reset_xml: True
 
 # Goal configs
-goals_dataset: /code/small_grasp_dataset_test/dataset.hdf5
+goals_dataset: /code/dynamics_model_dataset_test/dataset.hdf5
 traj_start_idx: 0
 use_final_goal_img: True
 goal_ims_from_data: False

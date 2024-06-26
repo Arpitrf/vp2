@@ -86,7 +86,7 @@ class FitVidTorchModel(VideoPredictionModel):
         self.model.eval()
 
     def prepare_batch(self, xs):
-        keys = ["video", "actions"]
+        keys = ["video", "actions", "grasped"]
         batch = {
             k: torch.from_numpy(x).to(self.device).float() for k, x in xs.items() if k in keys
         }
@@ -105,10 +105,11 @@ class FitVidTorchModel(VideoPredictionModel):
         with torch.no_grad() if not grad_enabled else ExitStack():
             batch = self.prepare_batch(batch)
             all_base_preds = list()
+            all_grasped_preds = list()
             for compute_batch_idx in range(
                 0, batch["video"].shape[0], self.max_batch_size
             ):
-                base_preds = self.model.test(
+                base_preds, grasped_preds = self.model.test(
                     slice_dict(
                         batch,
                         compute_batch_idx,
@@ -116,8 +117,12 @@ class FitVidTorchModel(VideoPredictionModel):
                     )
                 )
                 all_base_preds.append(base_preds)
+                all_grasped_preds.append(grasped_preds)
             base_preds = torch.cat(all_base_preds, dim=0)
+            grasped_preds = torch.cat(all_grasped_preds, dim=0)
             preds[self.base_prediction_modality] = base_preds
+            preds['grasped'] = grasped_preds
+            
             if "depth" in self.planning_modalities and "depth" not in preds:
                 depth_preds = []
                 for i in range(preds["rgb"].shape[1]):

@@ -30,7 +30,7 @@ class OGEnv(BaseEnv):
         config["scene"]["load_object_categories"] = ["floors", "ceilings", "walls", "coffee_table"]
         
         # remove later
-        config["scene"]['scene_file'] = '/home/arpit/test_projects/OmniGibson/small_grasp_dataset_test/episode_00008_start.json'
+        config["scene"]['scene_file'] = '/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test/episode_00004_start.json'
         
         config["objects"] = [
             {
