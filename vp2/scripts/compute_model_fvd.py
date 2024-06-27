@@ -176,7 +176,8 @@ def compute_fvd(cfg):
         gt_grasped = np.squeeze(gt_grasped.cpu().numpy())
         pred_grasped = eval_grasped_preds[ag_mode]
         pred_grasped = np.squeeze(pred_grasped.cpu().numpy())
-        print("gt_grasped, pred_grasped: ", gt_grasped, pred_grasped)
+        pred_grasped = np.round(pred_grasped)
+        print("gt_grasped, pred_grasped: ", gt_grasped, pred_grasped, np.sum(gt_grasped != pred_grasped))
         # input()
 
         if i > -1:
