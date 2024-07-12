@@ -12,9 +12,9 @@ dataset:
 seed: 0
 num_processes: 16
 num_trajectories: 1
-max_traj_length: 12
-n_context: 2
-planning_horizon: 10
+max_traj_length: 13
+n_context: 1
+planning_horizon: 7 # 10 originally
 camera_height: 64
 camera_width: 64
 run_name: default

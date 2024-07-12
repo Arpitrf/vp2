@@ -10,7 +10,7 @@ from vp2.models.model import VideoPredictionModel
 from hydra.utils import to_absolute_path
 
 try:
-    from fitvid.model.fitvid import FitVid
+    from fitvid.model.fitvid import FitVid, GraspedModel
 except ModuleNotFoundError:
     raise ModuleNotFoundError("FitVid is not installed. Please see the README for installation instructions.")
 
@@ -55,7 +55,8 @@ class FitVidTorchModel(VideoPredictionModel):
                 hp = json.load(config_file)
         hp["is_inference"] = True
         self.planning_modalities = planning_modalities
-        self.num_context = n_past
+        # self.num_context = n_past
+        self.num_context = hp['model_kwargs']['n_past']
         self.max_batch_size = max_batch_size
 
         for predictor in ["depth_predictor", "normal_predictor"]:
@@ -66,12 +67,9 @@ class FitVidTorchModel(VideoPredictionModel):
                     hp[predictor]["pretrained_weight_path"]
                 )
 
-        # added by Arpit
-        hp['model_kwargs']['grasped_dim'] = 1
-
         print("Loading FitVid model with hyperparameters:")
         pprint.pprint(hp)
-        self.model = FitVid(**hp)
+        self.rgb_model = FitVid(**hp)
 
         num_video_channels = hp["model_kwargs"].get("video_channels", 3)
         if num_video_channels == 1:
@@ -80,10 +78,20 @@ class FitVidTorchModel(VideoPredictionModel):
             self.base_prediction_modality = "rgb"
         self.device = device
         print("Load params")
-        self.model.load_parameters(self.checkpoint_file)
+        self.rgb_model.load_parameters(self.checkpoint_file)
         print(self.device)
-        self.model.to(self.device)
-        self.model.eval()
+        self.rgb_model.to(self.device)
+        self.rgb_model.eval()
+
+        # set up grasped model
+        hp['model_kwargs']['grasped_dim'] = 1
+        self.grasped_model = GraspedModel(**hp)
+        self.grasped_model.set_video_prediction_model(self.rgb_model)
+
+        grasped_model_ckpt_file = '/home/arpit/test_projects/fitvid/run_temp2/model_epoch375'
+        self.grasped_model.load_parameters(grasped_model_ckpt_file)
+        self.grasped_model.to(self.device)
+        self.grasped_model.eval()
 
     def prepare_batch(self, xs):
         keys = ["video", "actions", "grasped"]
@@ -109,7 +117,7 @@ class FitVidTorchModel(VideoPredictionModel):
             for compute_batch_idx in range(
                 0, batch["video"].shape[0], self.max_batch_size
             ):
-                base_preds, grasped_preds = self.model.test(
+                base_preds, grasped_preds = self.grasped_model.test(
                     slice_dict(
                         batch,
                         compute_batch_idx,

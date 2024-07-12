@@ -17,6 +17,32 @@ from vp2.models.simulator_model import SimulatorModel
 from vp2.mpc.utils import *
 from vp2.mpc.agent import PlanningAgent
 
+temp_prior = np.array([
+    [ 0.012, -0.021, -0.033,  0.024,  0.017, -0.024,  1.   ],
+    [ 0.017, -0.031, -0.049,  0.027,  0.017, -0.03,   1.   ],
+    [ 0.017, -0.031, -0.049,  0.025,  0.016, -0.028,  1.   ],
+    [ 0.017, -0.031, -0.049,  0.024,  0.016, -0.027,  1.   ],
+    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.024,  1.   ],
+    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
+    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
+    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
+    [ 0.004, -0.005, -0.045, -0.011,  0.003, -0.028,  1.   ],
+    [ 0.008, -0.006, -0.089, -0.037,  0.02,  -0.112,  1.   ],
+    [ 0.009, -0.007, -0.125, -0.059,  0.048, -0.153,  1.   ],
+    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     -1.   ],
+    [-0.017,  0.013,  0.035, -0.001, -0.005,  0.002,  -1.   ],
+    [-0.031,  0.031,  0.066,  0.059,  0.023,  0.033,  -1.   ],
+    [-0.032,  0.043,  0.081,  0.079,  0.023,  0.008,  -1.   ],
+    [-0.032,  0.047,  0.085,  0.079,  0.031, -0.009,  -1.   ],
+    [-0.032,  0.049,  0.086,  0.077,  0.032, -0.013,  -1.   ],
+    [-0.031,  0.049,  0.086,  0.075,  0.027, -0.011,  -1.   ],
+    [-0.03 ,  0.049,  0.086,  0.073,  0.021, -0.005,  -1.   ],
+    [-0.029,  0.049,  0.085,  0.072,  0.015,  0.002,  -1.   ],
+    [-0.028,  0.049,  0.085,  0.07,   0.011,  0.009,  -1.   ],
+    [-0.026,  0.048,  0.084,  0.067,  0.002,  0.02,   -1.   ],
+    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ],
+])
+
 
 def create_env(cfg):
     env = instantiate(cfg)
@@ -28,10 +54,10 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
 
     # _ = env.reset_to(initial_state)
 
-    if isinstance(agent, PlanningAgent) and isinstance(
-        agent.optimizer.model, SimulatorModel
-    ):
-        agent.optimizer.model.reset_to(initial_state)
+    # if isinstance(agent, PlanningAgent) and isinstance(
+    #     agent.optimizer.model, SimulatorModel
+    # ):
+    #     agent.optimizer.model.reset_to(initial_state)
 
     obs, _, _, _ = env.og_env.step(
         np.zeros(env.action_dimension)
@@ -39,6 +65,8 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
     obs = env.get_image_obs(obs)
     grasped_state = env.robot.custom_is_grasping()
     obs['grasped'] = grasped_state
+    # plt.imshow(obs['rgb'])
+    # plt.show()
 
     num_steps = 0
     observations = ObservationList.from_obs(obs, cfg)
@@ -78,39 +106,31 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
             goal_image = goal_image.append(
                 goal_image[-1].repeat(goal_length - len(goal_image))
             )
-        print("33goal_image: ", goal_image.data_dict['rgb'].shape)
+        # print("Goal image array shape: ", goal_image.data_dict['rgb'].shape)
 
         agent.set_goal(goal_image)
 
-        action = agent.act(num_steps, observations, state_observations, env, folder_name)
-
-        # # remove later
-        # temp_ideal_action = np.array([
-        #     [0.0023, 0.0085, -0.0419, 0.0203, 0.0035, -0.0260, 1.0000],
-        #     [0.0034, 0.0125, -0.0613, 0.0217, 0.0036, -0.0309, 1.0000],
-        #     [0.0033, 0.0127, -0.0619, 0.0211, 0.0037, -0.0289, 1.0000],
-        #     [0.0033, 0.0128, -0.0621, 0.0211, 0.0037, -0.0286, 1.0000],
-        #     [0.0033, 0.0128, -0.0621, 0.0209, 0.0034, -0.0287, 1.0000],
-        #     [0.0033, 0.0128, -0.0621, 0.0202, 0.0030, -0.0294, 1.0000],
-        #     [0.0003, 0.0014, -0.0401, -0.0003, -0.0004, -0.0013, 1.0000],
-        #     [0.0004, 0.0021, -0.0598, -0.0023, -0.0021, -0.0040, 1.0000],
-        #     [0.0004, 0.0022, -0.0601, -0.0024, -0.0024, -0.0039, 1.0000],
-        #     [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, -1.0000],
-        #     [0.0181, 0.0043, 0.0405, -0.0012, -0.0170, 0.0135, -1.0000],
-        #     [0.0353, 0.0183, 0.0686, 0.0407, -0.0522, 0.0300, -1.0000],
-        #     [0.0430, 0.0319, 0.0831, 0.0761, -0.0626, 0.0381, -1.0000],
-        #     [0.0442, 0.0374, 0.0888, 0.0807, -0.0571, 0.0349, -1.0000],
-        #     [0.0452, 0.0390, 0.0911, 0.0812, -0.0586, 0.0300, -1.0000],
-        #     [0.0455, 0.0394, 0.0924, 0.0829, -0.0582, 0.0297, -1.0000],
-        #     [0.0467, 0.0391, 0.0932, 0.0832, -0.0623, 0.0260, -1.0000],
-        #     [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-        # ])
-        # action = temp_ideal_action[num_steps]
+        # action = agent.act(num_steps, observations, state_observations, env, folder_name)
+        
+        # Execute the prior directly
+        action = temp_prior[num_steps]
+        if num_steps == 0:
+            goal_img_temp = goal_image.data_dict['rgb'][0]
+        obs = env.og_env.get_obs()[0]
+        obs = env.get_image_obs(obs)['rgb'] / 255
+        viewer_obs = env.get_viewer_obs() / 255
+        concat_img = hori_concatenate_image([viewer_obs, obs, goal_img_temp])
+        os.makedirs(f"{folder_name}/traj", exist_ok=True)
+        save_np_img(concat_img, f"{folder_name}/traj/{num_steps:02d}")
+        env.concat_imgs.append(concat_img)
 
         # print("action: ", action)
         obs = env.move_primitive(action)
+        for _ in range(60):
+            env.og.sim.step()
         obs = env.get_image_obs(obs)
         grasped_state = env.robot.custom_is_grasping()
+        print("grasped_state after action: ", grasped_state)
         obs['grasped'] = grasped_state
 
         # obs, _, _, _ = env.step(action)
@@ -127,7 +147,7 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
         state_observations.append(env.get_state())
         # rews.append(env.get_reward())
         print(f"Step {num_steps}: Action = {action}")
-        input()
+        # input()
         num_steps += 1
 
     # uncomment later
@@ -148,7 +168,9 @@ def set_all_seeds(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    # torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+    # torch.use_deterministic_algorithms(mode=True)
 
 
 def get_already_completed_runs(folder_name):
@@ -179,10 +201,12 @@ def run_control(cfg):
 
     env = create_env(cfg.env)
     goal_itr = env.goal_generator()
-    for i, retval in enumerate(goal_itr):
-        if i == 4:
-            init_state, goal_state, goal_image = retval
-            break
+    
+    # remove later
+    # for i, retval in enumerate(goal_itr):
+    #     if i == 10:
+    #         init_state, goal_state, goal_image = retval
+    #         break
     # init_state, goal_state, goal_image = next(goal_itr)
 
     # remove later
@@ -212,13 +236,16 @@ def run_control(cfg):
             print("Ran out of goals, stopping.")
             break
 
+        # if t != 16:
+        #     continue
+
         # print("init_state: ", init_state.keys())
         # print("init_state[states]: ", init_state['states'].shape)
         # print("init_state[model]: ", init_state['model'])
         # print("goal_state: ", goal_state.shape)
-        # print("goal_image: ", goal_image.data_dict['rgb'].shape)
-        plt.imshow(goal_image.data_dict['rgb'][0])
-        plt.show()
+        print("goal_image: ", goal_image.data_dict['rgb'].shape)
+        # plt.imshow(goal_image.data_dict['rgb'][0])
+        # plt.show()
 
         traj_folder = f"{folder_name}/traj_{t}/"
         print("traj_folder: ", traj_folder)

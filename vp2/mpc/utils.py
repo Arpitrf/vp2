@@ -55,7 +55,7 @@ class ObservationList:
             elif modality == "normal":
                 img = obs[modality].copy() / 255.0
             data_dict[modality] = img[None]  # Add time dimension
-            print("-------data_dict[modality]: ", data_dict[modality].shape)
+            # print("-------data_dict[modality]: ", data_dict[modality].shape)
         # adding "grasped" state modality
         grasped = np.array([obs['grasped']])
         data_dict['grasped'] = grasped[None]

@@ -27,20 +27,22 @@ class OGEnv(BaseEnv):
 
         # Update it to create a custom environment and run some actions
         config["scene"]["scene_model"] = "Rs_int"
-        config["scene"]["load_object_categories"] = ["floors", "ceilings", "walls", "coffee_table"]
+        config["scene"]["load_object_categories"] = ["floors", "ceilings", "walls", "coffee_table", "box"]
         
         # remove later
-        config["scene"]['scene_file'] = '/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test/episode_00004_start.json'
+        config["scene"]['scene_file'] = '/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test_2/episode_00012_start.json'
         
+        temp_rot = np.array([0, 0, 0.9, 0.2])
         config["objects"] = [
             {
                 "type": "PrimitiveObject",
                 "name": "box",
                 "primitive_type": "Cube",
                 "rgba": [1.0, 0, 0, 1.0],
-                "scale": [0.1, 0.05, 0.1],
+                "scale": [0.1, 0.04, 0.1], #[0.1, 0.05, 0.1]
                 # "size": 0.05,
                 "position": [-0.5, -0.7, 0.5],
+                "orientation": temp_rot / np.linalg.norm(temp_rot)
             },
             {
                 "type": "DatasetObject",
@@ -144,11 +146,12 @@ class OGEnv(BaseEnv):
             goals_dataset_path, self.env_hparams["camera_names"][0]
         )
 
-    def execute_controller(self, ctrl_gen):
+    def execute_controller(self, ctrl_gen, grasp_action):
         obs = self.og_env.get_obs()[0]
         for action in ctrl_gen:
             if action == 'Done':
                 continue
+            action[18] = grasp_action
             obs, _, _, _ = self.og_env.step(action)
         return obs
     
@@ -159,21 +162,27 @@ class OGEnv(BaseEnv):
 
         delta_pos = action[:3]
         delta_orn = action[3:6]
+        grasp_action = action[6]
         # print("current_orn, delta_orn: ", current_orn, delta_orn)
         # print('type 1: ', type(R.from_quat(current_orn)))
         # print('type 2: ', type(R.from_rotvec(delta_orn).as_quat()))
 
         target_pos = current_pos + delta_pos
-        print("type(target_pos): ", type(target_pos))
+        # print("type(target_pos): ", type(target_pos))
         target_orn = R.from_quat(current_orn) * R.from_quat(R.from_rotvec(delta_orn).as_quat())
-        print("target_orn: ", target_orn, target_orn.as_quat())
+        # print("target_orn: ", target_orn, target_orn.as_quat())
         target_orn = np.array(target_orn.as_quat())
 
         target_pose = (target_pos, target_orn)
-        print("current_pose: ", current_pose)
-        print("target_pose: ", target_pose)
+        # print("current_pose: ", current_pose)
+        # print("target_pose: ", target_pose)
         obs = self.execute_controller(self.action_primitives._move_hand_direct_ik(target_pose,
                                                                              stop_on_contact=False,
                                                                              ignore_failure=True,
-                                                                             stop_if_stuck=False))
+                                                                             stop_if_stuck=False), grasp_action)
+       
+        # Hack to ensure that even if primitive does not return any action (if delta pose is 0), grasp action is performed
+        action = self.action_primitives._empty_action()
+        obs = self.execute_controller([action], grasp_action)
+
         return obs

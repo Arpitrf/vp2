@@ -25,9 +25,8 @@ class CorrelatedNoiseSampler(GaussianSampler):
         self.beta = beta
 
     def sample_actions(self, num_samples, mu, std):
-        print("mu std: ", mu.shape, std.shape)
+        print("mu: ", mu)
         noise_samples = [np.random.normal(size=(num_samples, self.a_dim)) * std[0]]
-        print("11noise_samples: ", np.array(noise_samples).shape)
         for i in range(1, self.horizon):
             noise_samp = (
                 self.beta * noise_samples[-1]
@@ -36,20 +35,31 @@ class CorrelatedNoiseSampler(GaussianSampler):
                 * std[i]
             )
             noise_samples.append(noise_samp)
-        print("22noise_samples: ", np.array(noise_samples).shape)
-        print("---", np.array(noise_samples)[0,0], np.array(noise_samples)[1,0], np.array(noise_samples)[2,0])
         noise_samples = np.stack(noise_samples, axis=1)
-        print("33noise_samples: ", np.array(noise_samples).shape)
         ret_actions = np.expand_dims(mu, 0) + noise_samples
+
+        # remove later
+        counter = 0
+        counter2 = 0
+        for j in range(len(ret_actions)):
+            # print("--j", np.squeeze(predictions['grasped'][j]))
+                if ret_actions[j][-1][-1] == -1.0:
+                    counter += 1
+                elif ret_actions[j][-1][-1] == 1.0:
+                    counter2 += 1
+        print("In sampler: Number of trajectories with a grasped action and no grasped actions respectively: ", counter, counter2)
+        
         # change certain actions to grasp
-        num_changes = np.random.randint(5, 30)
-        bs_indices = np.random.randint(0, 200, num_changes)
-        traj_indices = np.random.randint(0, 10, num_changes)
+        num_changes = np.random.randint(30, 50)
+        bs_indices = np.random.choice(num_samples, num_changes, replace=False) #num_samples=200
+        traj_indices = np.random.randint(0, self.horizon, num_changes) 
         for i in range(len(bs_indices)):
             ret_actions[bs_indices[i], traj_indices[i]] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0])
             ret_actions[bs_indices[i], traj_indices[i]:, -1] = -1.0
-            # print(bs_indices[i], traj_indices[i], ret_actions[bs_indices[i]])
-            # print("**", ret_actions[bs_indices[i], traj_indices[i]:, -1])
-            # print("------------------")
-        # print("ret_actions.shape: ", ret_actions.shape)
+
+        # always have an immediate grasp + stay action
+        for i in range(self.horizon):
+            # ret_actions[199, i] = np.array([0.01*np.random.normal(), 0.01*np.random.normal(), 0.01*np.random.normal(), 0.0, 0.0, 0.0, -1.0])
+            ret_actions[199, i] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0])
+
         return ret_actions

@@ -161,6 +161,7 @@ class BaseEnv(metaclass=ABCMeta):
         :return: generator object which yields a tuple of (start state, goal state, goal obs) for a different task
         at each iteration
         """
+        print("goal generator file path: ", file_path)
         f = h5py.File(
             file_path, "r", driver="core"
         )  # core prevents MP collision, but should just load in at once?
@@ -176,6 +177,9 @@ class BaseEnv(metaclass=ABCMeta):
             else:
                 goal_im_source = f[f"data/{ep}/observations"]
 
+            # remove later. making goal image fixed
+            goal_im_source = f[f"data/episode_00015/observations"]
+
             for modality in self.env_hparams["planning_modalities"]:
                 # TODO: check why we neeed /255 here
                 if modality == "rgb":
@@ -189,7 +193,7 @@ class BaseEnv(metaclass=ABCMeta):
                     normal_goals = goal_im_source[f"{camera_name}_normal"][:] / 255.0
                     goals[modality] = normal_goals
             goals['rgb'] = goals['rgb'][:, :, :, :3]
-            print("goals: ", goals['rgb'].shape)
+            print("episode, all observations: ", ep, goals['rgb'].shape)
             goals = ObservationList(goals)
 
             # Determine which state from the trajectory or initial state to use as the start state
@@ -212,7 +216,7 @@ class BaseEnv(metaclass=ABCMeta):
             # print("start_idx: ", start_idx)
             # TODO: load states
             directory_path = '/'.join(file_path.split('/')[:-1])
-            print("directory_path: ", directory_path)
+            # print("directory_path: ", directory_path)
             initial_state = f'{directory_path}/{ep}_start.json'
             goal_state = f'{directory_path}/{ep}_end.json'
 
@@ -220,7 +224,7 @@ class BaseEnv(metaclass=ABCMeta):
             if self.env_hparams["use_final_goal_img"]:
                 # change later!!
                 # goals = goals[-1]
-                goals = goals[9]
+                goals = goals[8]
 
             else:
                 goals = goals[start_idx:]

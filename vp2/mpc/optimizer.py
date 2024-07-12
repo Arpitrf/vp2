@@ -10,9 +10,10 @@ from vp2.mpc.utils import (
 
 class Optimizer(metaclass=abc.ABCMeta):
     def log_best_plans(self, filename, vis_preds, goal, scores, fps=5):
+        goal.data_dict['rgb'] = np.concatenate((goal.data_dict['rgb'], goal.data_dict['rgb'][-1:]), axis=0)
         # Make sure that the goal has the same time dimension as the predictions
         if len(goal) == 1:
-            goal = goal.repeat(len(vis_preds[0]))
+            goal = goal.repeat(len(vis_preds[0])) 
 
         vis_preds = [o.append(goal, axis=1) for o in vis_preds]
         vis_preds = ObservationList.from_observations_list(vis_preds, axis=2)

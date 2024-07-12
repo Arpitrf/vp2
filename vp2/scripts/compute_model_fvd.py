@@ -40,6 +40,15 @@ def compute_fvd(cfg):
     lpips_official = lpips.LPIPS(net="alex").cuda()
     model = instantiate(cfg.model)
 
+    # # set up grasped state model
+    # model = GraspedModel(
+    #     model_kwargs=model_kwargs,
+    #     beta=FLAGS.beta,
+    #     multistep=FLAGS.multistep,
+    #     is_inference=False,
+    # )
+    # model.set_video_prediction_model(model_fitvid)
+
     # set up logging to json
     model_checkpoint_file = model.checkpoint_file
     print("model_checkpoint_file: ", model_checkpoint_file)
@@ -143,7 +152,7 @@ def compute_fvd(cfg):
         batch["actions"] = batch["actions"].float()
         if isinstance(model, FitVidTorchModel):
             with torch.no_grad():
-                _, eval_preds, eval_grasped_preds = model.model.evaluate(batch, compute_metrics=False)
+                _, eval_preds, eval_grasped_preds = model.grasped_model.evaluate(batch, compute_metrics=False)
         else:
             with torch.no_grad():
                 batch_prepped = dict()
@@ -156,6 +165,7 @@ def compute_fvd(cfg):
                     torch.tensor(outputs["rgb"][:, 1:]).permute(0, 1, 4, 2, 3).cuda()
                 )
                 eval_preds = dict(ag=outputs)
+
         gt_video = (batch["video"][:, 1:] * 255).to(torch.uint8)
         pred_video = (eval_preds[ag_mode]["rgb"] * 255).to(torch.uint8)
         gt_video_temp = gt_video.cpu()

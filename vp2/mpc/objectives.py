@@ -47,25 +47,25 @@ class SquaredError(Objective):
         self.key = key
 
     def compute_reward(self, prediction, goal):
-        print("prediction, goal: ", prediction[self.key].shape, goal[self.key].shape)
-
-        # added by Arpit
+        # 1. compute pixel cost
+        cost = (prediction[self.key] - goal[self.key]) ** 2
+        # sum works much better than mean -- mean has small magnitudes (and floating point errors?)
+        reward = -sum(cost, dim=(1, 2, 3, 4))
+        
+        # 2. obtain dynamics model predictions that predict a "grasped" state equal to the expected "grasped" state will occur at some time step
+        # and retain the corresponding actions
         ind_w_grasps = []
         for j in range(len(prediction['grasped'])):
             if any(np.squeeze(prediction['grasped'][j])):
                 ind_w_grasps.append(j)
-
-        cost = (prediction[self.key] - goal[self.key]) ** 2
-        print("cost: ", cost.shape)
-        # sum works much better than mean -- mean has small magnitudes (and floating point errors?)
-        reward = -sum(cost, dim=(1, 2, 3, 4))
-        print("reward: ", reward.shape)
         if len(ind_w_grasps) > 0:
             for j in range(len(prediction['grasped'])):
                 if j not in ind_w_grasps:
                     reward[j] = -1000000000
 
-        print("reward: ", reward)
+        # 3. sort the filtered actions by pixel cost
+        
+        # print("reward: ", reward)
         return reward[:, None, None]
 
 
