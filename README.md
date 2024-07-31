@@ -1,3 +1,8 @@
+Commands:
+```
+HYDRA_FULL_ERROR=1 python vp2/scripts/run_control.py
+```
+
 # VP<sup>2</sup>
 
 VP<sup>2</sup> is a benchmark for video prediction models for robotic manipulation via model-predictive control. 
