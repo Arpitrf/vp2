@@ -53,7 +53,11 @@ class FitVidTorchModel(VideoPredictionModel):
             print("Found config file! Loading hparams from it...")
             with open(config_path, "r") as config_file:
                 hp = json.load(config_file)
+        
+        # Adding some custom hyperparameters
         hp["is_inference"] = True
+        hp["use_grasped"] = True
+        
         self.planning_modalities = planning_modalities
         # self.num_context = n_past
         self.num_context = hp['model_kwargs']['n_past']
@@ -88,7 +92,7 @@ class FitVidTorchModel(VideoPredictionModel):
         self.grasped_model = GraspedModel(**hp)
         self.grasped_model.set_video_prediction_model(self.rgb_model)
 
-        grasped_model_ckpt_file = '/home/arpit/test_projects/fitvid/run_temp2/model_epoch375'
+        grasped_model_ckpt_file = '/home/arpit/test_projects/fitvid/run_seg_grasped/model_epoch225'
         self.grasped_model.load_parameters(grasped_model_ckpt_file)
         self.grasped_model.to(self.device)
         self.grasped_model.eval()
