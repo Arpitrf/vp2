@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import piq
 from hydra.utils import to_absolute_path
+import matplotlib.pyplot as plt
 
 from vp2.mpc.utils import slice_dict
 from vp2.util.conv_predictor import ConvPredictor
@@ -39,6 +40,141 @@ class Objective(metaclass=abc.ABCMeta):
         # IMPORTANT: All Objective subclasses compute REWARDS, not costs/losses.
         # This means that for any implemented objective, higher is better.
         return self.compute_reward(predictions, goal) * self.weight
+    
+class ClassMismatchError(Objective):
+    def __init__(self, key, weight):
+        super().__init__(weight)
+        self.key = key
+
+    def vectorized_sequence_ious(self, predictions, ground_truth):
+        print("preductions, groud_truth shapes: ", predictions.shape, ground_truth.shape)
+        # Convert to labels
+        pred_labels = np.argmax(predictions, axis=-1)  # Shape: (200, 7, 64, 64)
+        gt_labels = np.argmax(ground_truth, axis=-1)   # Shape: (7, 64, 64)
+        
+        # Expand ground truth to match the shape of predictions
+        gt_labels = np.expand_dims(gt_labels, axis=0)  # Shape: (1, 7, 64, 64)
+        
+        # Calculate intersection and union
+        intersection = np.logical_and(pred_labels == gt_labels, gt_labels > 0)  # Shape: (200, 7, 64, 64)
+        union = np.logical_or(pred_labels == gt_labels, gt_labels > 0)          # Shape: (200, 7, 64, 64)
+        print("intersection.shape, union.shape: ", intersection.shape, union.shape)
+
+        # Sum across spatial dimensions (64, 64) to get counts
+        intersection_sum = np.sum(intersection, axis=(2, 3))  # Shape: (200, 7)
+        union_sum = np.sum(union, axis=(2, 3))                # Shape: (200, 7)
+        
+        # Avoid division by zero by adding a small epsilon where union_sum is zero
+        epsilon = 1e-10
+        iou = intersection_sum / (union_sum + epsilon)  # Shape: (200, 7)
+        
+        # Sum IoUs across the sequence frames (axis=1)
+        iou_sums = np.sum(iou, axis=1)  # Shape: (200,)
+        
+        return iou_sums
+    
+    def mean_iou(self, seg1, seg2):
+        # # Convert one-hot encoded segmentation maps to class labels
+        # seg1_labels = np.argmax(seg1, axis=-1)
+        # seg2_labels = np.argmax(seg2, axis=-1)
+        
+        iou_list = []
+        final_iou = 0
+        for s in range(seg1.shape[0]):
+            seg1_labels = seg1[s]
+            seg2_labels = seg2[s]
+            for i in range(20):  # For each class
+                intersection = np.logical_and(seg1_labels == i, seg2_labels == i).sum()
+                union = np.logical_or(seg1_labels == i, seg2_labels == i).sum()
+                if union != 0:
+                    iou = intersection / union
+                    iou_list.append(iou)
+                else:
+                    iou_list.append(np.nan)
+            final_iou += np.nanmean(iou_list)
+        return final_iou
+    
+    def calculate_pixel_mismatches(self, seg1, seg2):
+        # # Convert one-hot encoded segmentation maps to class labels
+        # seg1_labels = np.argmax(seg1, axis=-1)
+        # seg2_labels = np.argmax(seg2, axis=-1)
+        
+        # Calculate mismatches per pixel
+        mismatches = seg1 != seg2
+        
+        # Count the number of mismatches
+        num_mismatches = mismatches.sum()
+        
+        # Calculate total number of pixels
+        total_pixels = mismatches.size
+        
+        # Calculate percentage of mismatches
+        mismatch_percentage = (num_mismatches / total_pixels) * 100
+        
+        return num_mismatches, mismatch_percentage
+    
+    def compute_reward(self, prediction, goal):
+        reward = 0
+        goal_seg_img = np.argmax(goal[self.key], axis=-1)
+        prediction_seg_img = prediction[self.key]
+        
+        # fig, ax = plt.subplots(5, 7)
+        # for i in range(7):
+        #     ax[0][i].imshow(prediction_seg_img[0, i])
+        #     ax[1][i].imshow(prediction_seg_img[14,i])
+        #     ax[2][i].imshow(prediction_seg_img[29,i])
+        #     ax[3][i].imshow(prediction_seg_img[33,i])
+        #     ax[4][i].imshow(prediction_seg_img[199,i])
+        # plt.show()
+        
+        # print(prediction_seg_img.shape, goal_seg_img.shape)
+        # print("prediction example values: ", prediction[self.key][0, 0, :5, :5])
+
+        # fig, ax = plt.subplots(2, 7)
+        # for i in range(7):
+        #     ax[0][i].imshow(goal_seg_img[i])
+        #     ax[1][i].imshow(prediction_seg_img[0,i])
+        # plt.show()
+
+        # TODO: Change this logic later
+        temp_dict = {
+            2: 6,
+            3: 3,
+            5: 7,
+            11: 10,
+            9: 8
+        }
+        new_goal_seg_img = goal_seg_img.copy()
+        for old_class, new_class in temp_dict.items():
+            new_goal_seg_img[goal_seg_img == old_class] = new_class
+        goal_seg_img = new_goal_seg_img.copy()
+
+        # fig, ax = plt.subplots(2, 7)
+        # for i in range(7):
+        #     ax[0][i].imshow(goal_seg_img[i])
+        #     ax[1][i].imshow(prediction_seg_img[0,i])
+        # plt.show()
+
+        reward = []
+        for i in range(prediction_seg_img.shape[0]):
+            # mean_iou = self.mean_iou(prediction_seg_img[i], goal_seg_img) 
+            num_mismatches,  mismatch_percentage = self.calculate_pixel_mismatches(prediction_seg_img[i], goal_seg_img)
+            reward.append(-num_mismatches)
+
+        reward = np.array(reward)
+        
+        # 2. obtain dynamics model predictions that predict a "grasped" state equal to the expected "grasped" state will occur at some time step
+        # and retain the corresponding actions
+        ind_w_grasps = []
+        for j in range(len(prediction['grasped'])):
+            if any(np.squeeze(prediction['grasped'][j])):
+                ind_w_grasps.append(j)
+        if len(ind_w_grasps) > 0:
+            for j in range(len(prediction['grasped'])):
+                if j not in ind_w_grasps:
+                    reward[j] = -1000000000
+        
+        return reward[:, None, None]
 
 
 class SquaredError(Objective):

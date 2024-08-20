@@ -17,32 +17,48 @@ from vp2.models.simulator_model import SimulatorModel
 from vp2.mpc.utils import *
 from vp2.mpc.agent import PlanningAgent
 
-temp_prior = np.array([
-    [ 0.012, -0.021, -0.033,  0.024,  0.017, -0.024,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.027,  0.017, -0.03,   1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.016, -0.028,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.024,  0.016, -0.027,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.024,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
-    [ 0.004, -0.005, -0.045, -0.011,  0.003, -0.028,  1.   ],
-    [ 0.008, -0.006, -0.089, -0.037,  0.02,  -0.112,  1.   ],
-    [ 0.009, -0.007, -0.125, -0.059,  0.048, -0.153,  1.   ],
-    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     -1.   ],
-    [-0.017,  0.013,  0.035, -0.001, -0.005,  0.002,  -1.   ],
-    [-0.031,  0.031,  0.066,  0.059,  0.023,  0.033,  -1.   ],
-    [-0.032,  0.043,  0.081,  0.079,  0.023,  0.008,  -1.   ],
-    [-0.032,  0.047,  0.085,  0.079,  0.031, -0.009,  -1.   ],
-    [-0.032,  0.049,  0.086,  0.077,  0.032, -0.013,  -1.   ],
-    [-0.031,  0.049,  0.086,  0.075,  0.027, -0.011,  -1.   ],
-    [-0.03 ,  0.049,  0.086,  0.073,  0.021, -0.005,  -1.   ],
-    [-0.029,  0.049,  0.085,  0.072,  0.015,  0.002,  -1.   ],
-    [-0.028,  0.049,  0.085,  0.07,   0.011,  0.009,  -1.   ],
-    [-0.026,  0.048,  0.084,  0.067,  0.002,  0.02,   -1.   ],
-    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ],
-])
+# temp_prior = np.array([
+#     [ 0.012, -0.021, -0.033,  0.024,  0.017, -0.024,  1.   ],
+#     [ 0.017, -0.031, -0.049,  0.027,  0.017, -0.03,   1.   ],
+#     [ 0.017, -0.031, -0.049,  0.025,  0.016, -0.028,  1.   ],
+#     [ 0.017, -0.031, -0.049,  0.024,  0.016, -0.027,  1.   ],
+#     [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.024,  1.   ],
+#     [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
+#     [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
+#     [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
+#     [ 0.004, -0.005, -0.045, -0.011,  0.003, -0.028,  1.   ],
+#     [ 0.008, -0.006, -0.089, -0.037,  0.02,  -0.112,  1.   ],
+#     [ 0.009, -0.007, -0.125, -0.059,  0.048, -0.153,  1.   ],
+#     [ 0.   ,  0.,     0.,     0.,     0.,     0.,     -1.   ],
+#     [-0.017,  0.013,  0.035, -0.001, -0.005,  0.002,  -1.   ],
+#     [-0.031,  0.031,  0.066,  0.059,  0.023,  0.033,  -1.   ],
+#     [-0.032,  0.043,  0.081,  0.079,  0.023,  0.008,  -1.   ],
+#     [-0.032,  0.047,  0.085,  0.079,  0.031, -0.009,  -1.   ],
+#     [-0.032,  0.049,  0.086,  0.077,  0.032, -0.013,  -1.   ],
+#     [-0.031,  0.049,  0.086,  0.075,  0.027, -0.011,  -1.   ],
+#     [-0.03 ,  0.049,  0.086,  0.073,  0.021, -0.005,  -1.   ],
+#     [-0.029,  0.049,  0.085,  0.072,  0.015,  0.002,  -1.   ],
+#     [-0.028,  0.049,  0.085,  0.07,   0.011,  0.009,  -1.   ],
+#     [-0.026,  0.048,  0.084,  0.067,  0.002,  0.02,   -1.   ],
+#     [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ],
+# ])
 
+temp_prior = np.array([
+    [ 0.003,  0.02,  -0.035, -0.034, -0.01,  -0.01,   1.   ],
+    [ 0.004,  0.03,  -0.053, -0.038, -0.013, -0.011,  1.   ],
+    [ 0.004,  0.03,  -0.052, -0.035, -0.012, -0.01,   1.   ],
+    [ 0.   ,  0.006, -0.047,  0.005, -0.011, -0.005,  1.   ],
+    [-0.001,  0.014, -0.091,  0.007, -0.052,  0.014,  1.   ],
+    [ 0.013,  0.012, -0.085,  0.003, -0.042, -0.059,  1.   ],
+    [ 0.   ,  0.,     0.,     0.,     0.,     0.,    -1.   ],
+    [-0.026,  0.007,  0.029, -0.004, -0.003, -0.053, -1.   ],
+    [-0.042,  0.018,  0.058,  0.025,  0.031, -0.065, -1.   ],
+    [-0.047,  0.023,  0.068,  0.022,  0.044, -0.092, -1.   ],
+    [-0.049,  0.024,  0.07,   0.02,   0.049, -0.106, -1.   ],
+    [-0.049,  0.024,  0.07,   0.019,  0.049, -0.113, -1.   ],
+    [-0.049,  0.024,  0.069,  0.018,  0.05,  -0.119, -1.   ],
+    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ]
+])
 
 def create_env(cfg):
     env = instantiate(cfg)
@@ -59,10 +75,10 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
     # ):
     #     agent.optimizer.model.reset_to(initial_state)
 
-    obs, _, _, _ = env.og_env.step(
+    obs, _, _, info = env.og_env.step(
         np.zeros(env.action_dimension)
     )  # not taking this step delays iGibson observations, TODO debug this!!
-    obs = env.get_image_obs(obs)
+    obs = env.get_image_obs(obs, info["obs_info"])
     grasped_state = env.robot.custom_is_grasping()
     obs['grasped'] = grasped_state
     # plt.imshow(obs['rgb'])
@@ -70,7 +86,7 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
 
     num_steps = 0
     observations = ObservationList.from_obs(obs, cfg)
-    # print("observations: ", observations.data_dict['rgb'].shape)
+    print("observations: ", observations.data_dict['gripper_obj_seg'].shape)
     observations.save_image(f"{folder_name}/obs_after_reset", index=0)
     observations.append(ObservationList.from_obs(obs, cfg))
     # print("observations: ", observations.data_dict['rgb'].shape)
@@ -110,25 +126,25 @@ def run_trajectory(cfg, folder_name, agent, env, initial_state, goal_state, goal
 
         agent.set_goal(goal_image)
 
-        # action = agent.act(num_steps, observations, state_observations, env, folder_name)
+        action = agent.act(num_steps, observations, state_observations, env, folder_name)
         
-        # Execute the prior directly
-        action = temp_prior[num_steps]
-        if num_steps == 0:
-            goal_img_temp = goal_image.data_dict['rgb'][0]
-        obs = env.og_env.get_obs()[0]
-        obs = env.get_image_obs(obs)['rgb'] / 255
-        viewer_obs = env.get_viewer_obs() / 255
-        concat_img = hori_concatenate_image([viewer_obs, obs, goal_img_temp])
-        os.makedirs(f"{folder_name}/traj", exist_ok=True)
-        save_np_img(concat_img, f"{folder_name}/traj/{num_steps:02d}")
-        env.concat_imgs.append(concat_img)
+        # # Execute the prior directly
+        # action = temp_prior[num_steps]
+        # if num_steps == 0:
+        #     goal_img_temp = goal_image.data_dict['rgb'][0]
+        # obs = env.og_env.get_obs()[0]
+        # obs = env.get_image_obs(obs)['rgb'] / 255
+        # viewer_obs = env.get_viewer_obs() / 255
+        # concat_img = hori_concatenate_image([viewer_obs, obs, goal_img_temp])
+        # os.makedirs(f"{folder_name}/traj", exist_ok=True)
+        # save_np_img(concat_img, f"{folder_name}/traj/{num_steps:02d}")
+        # env.concat_imgs.append(concat_img)
 
         # print("action: ", action)
-        obs = env.move_primitive(action)
+        obs, info = env.move_primitive(action)
         for _ in range(60):
             env.og.sim.step()
-        obs = env.get_image_obs(obs)
+        obs = env.get_image_obs(obs, info["obs_info"])
         grasped_state = env.robot.custom_is_grasping()
         print("grasped_state after action: ", grasped_state)
         obs['grasped'] = grasped_state
@@ -243,7 +259,7 @@ def run_control(cfg):
         # print("init_state[states]: ", init_state['states'].shape)
         # print("init_state[model]: ", init_state['model'])
         # print("goal_state: ", goal_state.shape)
-        print("goal_image: ", goal_image.data_dict['rgb'].shape)
+        print("goal_image: ", goal_image.data_dict['gripper_obj_seg'].shape)
         # plt.imshow(goal_image.data_dict['rgb'][0])
         # plt.show()
 

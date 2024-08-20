@@ -80,6 +80,8 @@ class FitVidTorchModel(VideoPredictionModel):
             self.base_prediction_modality = "depth"
         elif num_video_channels == 3:
             self.base_prediction_modality = "rgb"
+        elif num_video_channels == 20:
+            self.base_prediction_modality = "gripper_obj_seg"
         self.device = device
         print("Load params")
         self.rgb_model.load_parameters(self.checkpoint_file)
@@ -116,6 +118,7 @@ class FitVidTorchModel(VideoPredictionModel):
         preds = dict()
         with torch.no_grad() if not grad_enabled else ExitStack():
             batch = self.prepare_batch(batch)
+
             all_base_preds = list()
             all_grasped_preds = list()
             for compute_batch_idx in range(

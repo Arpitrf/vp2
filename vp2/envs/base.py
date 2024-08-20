@@ -170,6 +170,10 @@ class BaseEnv(metaclass=ABCMeta):
         # inds = np.argsort([int(elem[5:]) for elem in demos])
         # demos = [demos[i] for i in inds]
         for ind, ep in enumerate(demos):
+
+            if ep != 'episode_00009':
+                continue
+
             # load all goal images
             goals = dict()
             if self.env_hparams["goal_ims_from_data"]:
@@ -178,12 +182,20 @@ class BaseEnv(metaclass=ABCMeta):
                 goal_im_source = f[f"data/{ep}/observations"]
 
             # remove later. making goal image fixed
-            goal_im_source = f[f"data/episode_00015/observations"]
+            # goal_im_source = f[f"data/episode_00002/observations"]
+            # obs_info = f[f"data/episode_00012/observations_info"]
+            # obs = goal_im_source
+
+            # # generating gripper_obj_seg obs
+            # gripper_obj_seg = self.obtain_gripper_obj_seg(obs['robot0']['robot0:eyes:Camera:0']['seg_instance_id'], 
+            #                                         obs_info['robot0']['robot0:eyes:Camera:0']['seg_instance_id'])
+            # goal_im_source["gripper_obj_seg"] = gripper_obj_seg
 
             for modality in self.env_hparams["planning_modalities"]:
                 # TODO: check why we neeed /255 here
                 if modality == "rgb":
                     goals[modality] = goal_im_source["rgb"][:] / 255.0
+                    goals['rgb'] = goals['rgb'][:, :, :, :3]
                 elif modality == "depth":
                     goals[modality] = goal_im_source[f"{camera_name}_depth"][:]
                     if goals[modality].shape[-1] != 1:
@@ -192,8 +204,14 @@ class BaseEnv(metaclass=ABCMeta):
                 elif modality == "normal":
                     normal_goals = goal_im_source[f"{camera_name}_normal"][:] / 255.0
                     goals[modality] = normal_goals
-            goals['rgb'] = goals['rgb'][:, :, :, :3]
-            print("episode, all observations: ", ep, goals['rgb'].shape)
+                elif modality == "gripper_obj_seg":
+                    goals[modality] = goal_im_source["gripper_obj_seg"][:]
+                    seq_len, h, w = goals[modality].shape[0], goals[modality].shape[1], goals[modality].shape[2]
+                    one_hot_encoded_image = np.zeros((seq_len, h, w, 20), dtype=int)
+                    one_hot_encoded_image[np.arange(seq_len)[:, None, None], np.arange(h)[None, :, None], np.arange(w)[None, None, :], goals[modality]] = 1
+                    goals[modality] = one_hot_encoded_image
+            
+            print("episode, all observations: ", ep, goals['gripper_obj_seg'].shape)
             goals = ObservationList(goals)
 
             # Determine which state from the trajectory or initial state to use as the start state
@@ -224,7 +242,7 @@ class BaseEnv(metaclass=ABCMeta):
             if self.env_hparams["use_final_goal_img"]:
                 # change later!!
                 # goals = goals[-1]
-                goals = goals[8]
+                goals = goals[10]
 
             else:
                 goals = goals[start_idx:]

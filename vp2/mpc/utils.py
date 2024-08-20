@@ -4,6 +4,28 @@ import cv2
 
 from torchvision.transforms import Resize, InterpolationMode
 
+color_map = {
+    0: [0, 0, 0],         # Black
+    1: [128, 0, 0],       # Maroon
+    2: [0, 128, 0],       # Green
+    3: [128, 128, 0],     # Olive
+    4: [0, 0, 128],       # Navy
+    5: [128, 0, 128],     # Purple
+    6: [0, 128, 128],     # Teal
+    7: [128, 128, 128],   # Gray
+    8: [192, 192, 192],   # Silver
+    9: [255, 0, 0],       # Red
+    10: [0, 255, 0],      # Lime
+    11: [255, 255, 0],    # Yellow
+    12: [0, 0, 255],      # Blue
+    13: [255, 0, 255],    # Fuchsia
+    14: [0, 255, 255],    # Aqua
+    15: [255, 255, 255],  # White
+    16: [128, 128, 64],   # Yellow Green
+    17: [192, 0, 64],     # Scarlet
+    18: [64, 128, 192],   # Light Blue
+    19: [192, 64, 128]    # Pink
+}
 
 class ObservationList:
 
@@ -14,7 +36,7 @@ class ObservationList:
     H and W are the height and width of the image, and C is the number of channels.
     """
 
-    POSSIBLE_MODALITIES = ["rgb", "depth", "normal", "policy", "grasped"]
+    POSSIBLE_MODALITIES = ["rgb", "depth", "normal", "policy", "grasped", "gripper_obj_seg"]
 
     def __init__(self, data_dict, add_time_dimension=False, image_shape=(64, 64)):
         self.data_dict = data_dict
@@ -23,10 +45,15 @@ class ObservationList:
             assert (
                 k in self.POSSIBLE_MODALITIES
             ), f"observation key {k} not in possible modalities list!"
+            print("k, v: ", k, v.shape)
             if len(v.shape) > 2:
                 assert v.shape[-2] == v.shape[-3], "Image is not square!"
                 if v.shape[-3:-1] != self.image_shape:
-                    self.data_dict[k] = resize_np_image_aa(v, self.image_shape)
+                    if k == 'gripper_obj_seg':
+                        is_seg = True
+                    else:
+                        is_seg = False
+                    self.data_dict[k] = resize_np_image_aa(v, self.image_shape, seg=is_seg)
         if add_time_dimension:
             for (
                 k,
@@ -41,6 +68,7 @@ class ObservationList:
     def from_obs(cls, obs, cfg):
         data_dict = dict()
         for modality in cfg.planning_modalities:
+            print("obs[modality]: ", modality, np.array(obs[modality]).shape)
             if modality == "depth":
                 img = obs[modality].copy()
                 if cfg.env.renderer == "igibson":
@@ -54,8 +82,10 @@ class ObservationList:
                 img = obs[modality].copy() / 255.0
             elif modality == "normal":
                 img = obs[modality].copy() / 255.0
+            elif modality == 'gripper_obj_seg':
+                img = obs[modality].copy()
             data_dict[modality] = img[None]  # Add time dimension
-            # print("-------data_dict[modality]: ", data_dict[modality].shape)
+            print("-------data_dict[modality]: ", data_dict[modality].shape)
         # adding "grasped" state modality
         grasped = np.array([obs['grasped']])
         data_dict['grasped'] = grasped[None]
@@ -92,7 +122,18 @@ class ObservationList:
                 imgs.append(depth_to_rgb_im(val) / 255.0)
             elif key in ["rgb", "normal"]:
                 imgs.append(val)
-        img = (np.concatenate(imgs, axis=-3) * 255).astype(np.uint8)
+            elif key == 'gripper_obj_seg':
+                val = np.argmax(val, axis=-1)
+                imgs.append(val)
+        if 'gripper_obj_seg' in self.data_dict.keys():
+            imgs = np.array(imgs)
+            print("imgs.shape: ", imgs.shape)
+            imgs_rgb = np.zeros((imgs.shape[0], imgs.shape[1], imgs.shape[2], imgs.shape[3], 3))
+            for class_id, color in color_map.items():
+                imgs_rgb[imgs == class_id] = color
+            img = (np.concatenate(imgs_rgb, axis=-3)).astype(np.uint8)
+        else:
+            img = (np.concatenate(imgs, axis=-3) * 255).astype(np.uint8)
         return img
 
     def log_gif(self, name, fps=5):
@@ -100,6 +141,7 @@ class ObservationList:
         write_moviepy_gif(list(obs_list), name, fps=fps)
 
     def save_image(self, fname, filetype="png", index=0):
+        print("in save_image: ", self.data_dict.keys())
         img_list = self.to_image_list()
         save_np_img(img_list[index], fname, filetype=filetype)
 
@@ -215,10 +257,12 @@ def hwc_to_chw(t):
     return torch.movedim(t, -1, -3)
 
 
-def resize_np_image_aa(img, dims):
+def resize_np_image_aa(img, dims, seg=False):
     img = torch.tensor(img)
     img = hwc_to_chw(img)
     interpolation_mode = InterpolationMode.BILINEAR
+    if seg == True:
+        interpolation_mode = InterpolationMode.NEAREST
     img = Resize(dims, interpolation=interpolation_mode, antialias=True)(img)
     img = chw_to_hwc(img)
     return img.numpy()

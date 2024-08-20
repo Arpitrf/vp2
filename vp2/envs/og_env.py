@@ -30,7 +30,7 @@ class OGEnv(BaseEnv):
         config["scene"]["load_object_categories"] = ["floors", "ceilings", "walls", "coffee_table", "box"]
         
         # remove later
-        config["scene"]['scene_file'] = '/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_test_2/episode_00012_start.json'
+        config["scene"]['scene_file'] = '/home/arpit/test_projects/OmniGibson/dynamics_model_dataset_seg_test/episode_00009_start.json'
         
         temp_rot = np.array([0, 0, 0.9, 0.2])
         config["objects"] = [
@@ -108,11 +108,67 @@ class OGEnv(BaseEnv):
     def reset_state(self, state):
         pass
 
-    def get_image_obs(self, obs):
+    def obtain_gripper_obj_seg(self, img, img_info):
+        # img = f[f'data/{k}/observations/seg_instance_id'][0]
+        # img_info = np.array(f[f'data/{k}/observations_info']['seg_instance_id']).astype(str)[0]
+        
+        # TODO: Did this cause previous dynamics model was trained on some fixed set of classes. Won't need this later
+        temp_dict = {
+            '/World/robot0/gripper_right_link/visuals': 6,
+            '/World/robot0/gripper_right_right_finger_link/visuals': 7,
+            '/World/robot0/gripper_right_left_finger_link/visuals': 3,
+            '/World/coffee_table_fqluyq_0/base_link/visuals': 10,
+            '/World/box/base_link/visuals': 8
+        }
+        parts_of_concern = [  
+            '/World/robot0/gripper_right_link/visuals',
+            '/World/robot0/gripper_right_right_finger_link/visuals',
+            '/World/robot0/gripper_right_left_finger_link/visuals',
+            '/World/coffee_table_fqluyq_0/base_link/visuals',
+            '/World/box/base_link/visuals'
+        ]
+        # ids_of_concern = []
+        ids_of_concern = {}
+        for key, val in img_info.items():
+            print("key, val: ", key, val)
+            if val in parts_of_concern:
+                # ids_of_concern.append(int(key))
+                # remove later
+                ids_of_concern[int(key)] = temp_dict[val]
+        # input()
+        
+        # print("ids_of_concern: ", ids_of_concern)
+        new_img = img.copy()
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                # print("img[i][j]: ", img[i][j], type(int(img[i][j])), type(ids_of_concern[0]))
+                if int(img[i][j]) not in ids_of_concern.keys():
+                    # print(int(img[i][j]))
+                    new_img[i][j] = 0
+                # fix for bug: class labels should match the training set classes
+                else:
+                    new_img[i][j] = ids_of_concern[int(new_img[i][j])]
+        return new_img
+
+
+    def get_image_obs(self, obs, obs_info=None):
+        img_obs = {}
+        gripper_obj_seg = self.obtain_gripper_obj_seg(obs['robot0']['robot0:eyes:Camera:0']['seg_instance_id'], 
+                                                    obs_info['robot0']['robot0:eyes:Camera:0']['seg_instance_id'])
+        print("gripper_obj_seg: ", gripper_obj_seg.shape)
+        h, w = gripper_obj_seg.shape[0], gripper_obj_seg.shape[1]
+        one_hot_encoded_image = np.zeros((h, w, 20), dtype=int)
+        one_hot_encoded_image[np.arange(h)[:, None], np.arange(w)[None, :], gripper_obj_seg] = 1
+        gripper_obj_seg = one_hot_encoded_image
+        # img_obs['rgb'] = obs['robot0']['robot0:eyes:Camera:0']['rgb'][:,:,:3]
+        img_obs['gripper_obj_seg'] = gripper_obj_seg
+        return img_obs
+    
+    def get_rgb_obs(self, obs, obs_info=None):
         img_obs = {}
         img_obs['rgb'] = obs['robot0']['robot0:eyes:Camera:0']['rgb'][:,:,:3]
         return img_obs
-    
+
     def get_viewer_obs(self):
         viewer_obs = og.sim.viewer_camera._get_obs()[0]['rgb'][:,:,:3]
         return viewer_obs
@@ -147,13 +203,13 @@ class OGEnv(BaseEnv):
         )
 
     def execute_controller(self, ctrl_gen, grasp_action):
-        obs = self.og_env.get_obs()[0]
+        obs, info = self.og_env.get_obs()
         for action in ctrl_gen:
             if action == 'Done':
                 continue
             action[18] = grasp_action
-            obs, _, _, _ = self.og_env.step(action)
-        return obs
+            obs, _, _, info = self.og_env.step(action)
+        return obs, info
     
     def move_primitive(self, action):
         current_pose = self.robot.get_relative_eef_pose(arm='right')
@@ -176,13 +232,13 @@ class OGEnv(BaseEnv):
         target_pose = (target_pos, target_orn)
         # print("current_pose: ", current_pose)
         # print("target_pose: ", target_pose)
-        obs = self.execute_controller(self.action_primitives._move_hand_direct_ik(target_pose,
+        obs, info = self.execute_controller(self.action_primitives._move_hand_direct_ik(target_pose,
                                                                              stop_on_contact=False,
                                                                              ignore_failure=True,
                                                                              stop_if_stuck=False), grasp_action)
        
         # Hack to ensure that even if primitive does not return any action (if delta pose is 0), grasp action is performed
         action = self.action_primitives._empty_action()
-        obs = self.execute_controller([action], grasp_action)
+        obs, info = self.execute_controller([action], grasp_action)
 
-        return obs
+        return obs, info

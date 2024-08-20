@@ -21,7 +21,8 @@ run_name: default
 resume: True
 
 planning_modalities:
-  - rgb
+  # - rgb
+  - gripper_obj_seg
 
 
 camera_names:

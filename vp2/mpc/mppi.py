@@ -9,49 +9,39 @@ from vp2.mpc.utils import *
 
 from omnigibson.utils.ui_utils import draw_line, clear_debug_drawing
 
-# # episode 10 in dynamics_model_test_2
-# temp_ideal_action = np.array([
-#     [ 0.039, -0.032, -0.023,  0.03,   0.008, -0.047,  1.   ],
-#     [ 0.057, -0.055, -0.036, -0.027,  0.025, -0.155,  1.   ],
-#     [ 0.01 , -0.01,  -0.056, -0.002,  0.001, -0.005,  1.   ],
-#     [ 0.017, -0.014, -0.076, -0.007, -0.009, -0.019,  1.   ],
-#     [ 0.   ,  0.,     0.,     0.,     0.,     0.,    -1.   ],
-#     [-0.006,  0.021,  0.037, -0.008, -0.005, -0.017, -1.   ],
-#     [-0.015,  0.04,   0.071,  0.046,  0.034, -0.026, -1.   ],
-#     [-0.015,  0.05,   0.084,  0.055,  0.016, -0.006, -1.   ],
-#     [-0.015,  0.052,  0.086,  0.052,  0.008,  0.008, -1.   ],
-#     [-0.014,  0.052,  0.086,  0.051,  0.008,  0.01,  -1.   ],
-#     [-0.013,  0.052,  0.086,  0.048,  0.005,  0.009, -1.   ],
-#     [-0.013,  0.052,  0.085,  0.046,  0.004,  0.009, -1.   ],
-#     [-0.012,  0.051,  0.085,  0.045,  0.002,  0.008, -1.   ],
-#     [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ],
+# temp_prior = np.array([
+#     [-0.014, -0.035, -0.029, -0.019, -0.002, -0.012,  1.   ],
+#     [-0.02 , -0.049, -0.042, -0.021, -0.002, -0.013,  1.   ],
+#     [-0.021, -0.051, -0.043, -0.021, -0.003, -0.013,  1.   ],
+#     [-0.021, -0.051, -0.043, -0.021, -0.003, -0.013,  1.   ],
+#     [-0.021, -0.051, -0.043, -0.021, -0.003, -0.013,  1.   ],
+#     [-0.004, -0.008, -0.057, -0.001, -0.001, -0.001,  1.   ],
+#     [-0.005, -0.011, -0.077, -0.001,  0.001, -0.001,  1.   ],
+#     [-0.001, -0.016,  0.043, -0.001,  0.,    -0.004,  1.   ],
+#     [-0.001, -0.023,  0.061, -0.003,  0.,    -0.006,  1.   ],
+#     [-0.001, -0.023,  0.062, -0.003, -0.,    -0.005,  1.   ],
+#     [-0.001, -0.024,  0.063, -0.002, -0.002, -0.006,  1.   ],
+#     [-0.001, -0.024,  0.063, -0.001,  0.001, -0.004,  1.   ],
+#     [-0.001, -0.024,  0.064, -0.001,  0.001, -0.004,  1.   ],
+#     [ 0.   , -0.031,  0.081,  0.003, -0.004, -0.009,  1.   ],
+#     [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ]
 # ])
 
-# episode 11 in dynamics_model_test_2
 temp_prior = np.array([
-    [ 0.012, -0.021, -0.033,  0.024,  0.017, -0.024,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.027,  0.017, -0.03,   1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.016, -0.028,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.024,  0.016, -0.027,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.024,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
-    [ 0.017, -0.031, -0.049,  0.025,  0.019, -0.025,  1.   ],
-    [ 0.004, -0.005, -0.045, -0.011,  0.003, -0.028,  1.   ],
-    [ 0.008, -0.006, -0.089, -0.037,  0.02,  -0.112,  1.   ],
-    [ 0.009, -0.007, -0.125, -0.059,  0.048, -0.153,  1.   ],
-    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     1.   ],
-    [-0.017,  0.013,  0.035, -0.001, -0.005,  0.002,  1.   ],
-    [-0.031,  0.031,  0.066,  0.059,  0.023,  0.033,  1.   ],
-    [-0.032,  0.043,  0.081,  0.079,  0.023,  0.008,  1.   ],
-    [-0.032,  0.047,  0.085,  0.079,  0.031, -0.009,  1.   ],
-    [-0.032,  0.049,  0.086,  0.077,  0.032, -0.013,  1.   ],
-    [-0.031,  0.049,  0.086,  0.075,  0.027, -0.011,  1.   ],
-    [-0.03 ,  0.049,  0.086,  0.073,  0.021, -0.005,  1.   ],
-    [-0.029,  0.049,  0.085,  0.072,  0.015,  0.002,  1.   ],
-    [-0.028,  0.049,  0.085,  0.07,   0.011,  0.009,  1.   ],
-    [-0.026,  0.048,  0.084,  0.067,  0.002,  0.02,   1.   ],
-    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ],
+    [ 0.013,  0.02,  -0.035, -0.034, -0.01,  -0.01,   1.   ],
+    [ 0.004,  0.03,  -0.053, -0.038, -0.013, -0.011,  1.   ],
+    [ 0.004,  0.03,  -0.052, -0.035, -0.012, -0.01,   1.   ],
+    [ 0.   ,  0.006, -0.047,  0.005, -0.011, -0.005,  1.   ],
+    [-0.001,  0.014, -0.091,  0.007, -0.052,  0.014,  1.   ],
+    [ 0.013,  0.012, -0.085,  0.003, -0.042, -0.059,  1.   ],
+    [ 0.   ,  0.,     0.,     0.,     0.,     0.,    -1.   ],
+    [-0.026,  0.007,  0.029, -0.004, -0.003, -0.053, -1.   ],
+    [-0.042,  0.018,  0.058,  0.025,  0.031, -0.065, -1.   ],
+    [-0.047,  0.023,  0.068,  0.022,  0.044, -0.092, -1.   ],
+    [-0.049,  0.024,  0.07,   0.02,   0.049, -0.106, -1.   ],
+    [-0.049,  0.024,  0.07,   0.019,  0.049, -0.113, -1.   ],
+    [-0.049,  0.024,  0.069,  0.018,  0.05,  -0.119, -1.   ],
+    [ 0.   ,  0.,     0.,     0.,     0.,     0.,     0.   ]
 ])
 
 class MPPIOptimizer(Optimizer):
@@ -169,6 +159,24 @@ class MPPIOptimizer(Optimizer):
             # env.og.sim.step()
                 # input()
     
+    def visualize_action_pred_rew(self, predictions, goal, action_samples, rewards, sorted_prediction_inds):
+        goal = np.argmax(goal['gripper_obj_seg'], axis=-1)
+        fig, ax = plt.subplots(10,8)
+        rewards = np.squeeze(rewards)
+        temp_ind = 0
+        for i in range(10):
+            ind = sorted_prediction_inds[temp_ind]
+            print(rewards[ind])
+            for j in range(8):
+                if j == 7:
+                    ax[i][j].imshow(goal[0])
+                else:
+                    ax[i][j].imshow(predictions['gripper_obj_seg'][ind][j])
+            temp_ind += 19
+        plt.show()
+
+        # input()
+
     def plan(
         self,
         t,
@@ -217,14 +225,13 @@ class MPPIOptimizer(Optimizer):
 
         # Using a prior
         mu = temp_prior[t-1 : t-1+self.horizon]
-
+        
         std = self.init_std[None].repeat(self.horizon, axis=0)
-
         new_action_samples = self.sampler.sample_actions(self.num_samples, mu, std)
         new_action_samples = np.clip(new_action_samples, -1, 1)
 
         # # remove later -----------
-        # ideal_action = temp_ideal_action[t-1 : t-1+self.horizon]
+        # ideal_action = temp_prior[t-1 : t-1+self.horizon]
         # print("temp_ideal_action: ", ideal_action.shape, ideal_action[0])
         # # print("11new_action_sample[199]: ", new_action_samples[199, :2])
         # # new_action_samples[199] = ideal_action
@@ -241,8 +248,7 @@ class MPPIOptimizer(Optimizer):
         # # remove later
         # action_samples[:, :, 3:6] = [0.0, 0.0, 0.0]
         
-        # print("action_samples: ", action_samples[:5])
-
+        # print("action_samples: ", action_samples[:5], action_samples[199])
         print("action_samples: ", action_samples.shape)
 
         counter = 0
@@ -276,15 +282,26 @@ class MPPIOptimizer(Optimizer):
             "state_obs": state_history,
         }
         print("batch[grasped], batch[video], batch[actions]: ", batch['grasped'].shape, batch['video'].shape, batch['actions'].shape)
-        # plt.imshow(batch['video'][0, 0])
+        # obs_input_to_model = np.argmax(batch['video'], axis=-1)
+        # plt.imshow(obs_input_to_model[0, 0])
         # plt.show()
 
         pred_start_time = time.time()
-        predictions = self.model(batch)
+        with torch.no_grad():
+            predictions = self.model(batch)
         # print("predictions: ", predictions['rgb'][0,0,:2, :2, :])
         # print("predictions: ", predictions['rgb'].shape, type(predictions['rgb']), type(predictions['rgb'][0,0,0,0,0]))
         # print("grasped predictions: ", predictions['grasped'], predictions['grasped'].shape)
+        
+        # post-process predictions to convert it into right format. 
+        # i.e. round the grasped values to 0 or 1 and the one-hot segmentation classes to 0 and 1s as well
         predictions['grasped'] = np.round(predictions['grasped'])
+        logSoftmax = torch.nn.LogSoftmax(dim=-1)
+        pred_torch = torch.from_numpy(predictions['gripper_obj_seg'])
+        out = logSoftmax(pred_torch).numpy()
+        predictions['gripper_obj_seg'] = np.argmax(out, axis=-1)
+        
+        # Testing how many episodes out of 200 have a grasp state = 1 predicted
         counter = 0
         for j in range(len(predictions['grasped'])):
             # print("--j", np.squeeze(predictions['grasped'][j]))
@@ -292,6 +309,7 @@ class MPPIOptimizer(Optimizer):
                 counter += 1
         print("Number of trajectories with grasped predictions: ", counter)
         # input()
+        
         prediction_time = time.time() - pred_start_time
         self._model_prediction_times.append(prediction_time)
         # print(f"Prediction time {prediction_time}")
@@ -299,16 +317,16 @@ class MPPIOptimizer(Optimizer):
         #     f"Out of {len(self._model_prediction_times)}, Median prediction time {np.median(self._model_prediction_times)}"
         # )
 
-        # print("action[199], prediction_grasped[199]: ", action_samples[199], predictions['grasped'][199])
-        # print("action[185]: ", action_samples[185])
-        # print("action[187]: ", action_samples[187])
-        # input()
+        # # print("action[199], prediction_grasped[199]: ", action_samples[199], predictions['grasped'][199])
+        # # print("action[185]: ", action_samples[185])
+        # # print("action[187]: ", action_samples[187])
+        # # input()
 
-        # --- remove later -----
-        # new_pred = np.array(self.gt_preds[t-1 : t+self.horizon])
-        # .repeat(self.horizon, axis=0)
-        # predictions['rgb'][199] = np.array(self.gt_preds[t-1 : t+self.horizon]) / 255
-        # ----------------------
+        # # --- remove later -----
+        # # new_pred = np.array(self.gt_preds[t-1 : t+self.horizon])
+        # # .repeat(self.horizon, axis=0)
+        # # predictions['rgb'][199] = np.array(self.gt_preds[t-1 : t+self.horizon]) / 255
+        # # ----------------------
 
         rewards = self.obj_fn(predictions, goal)
         sorted_prediction_inds = np.argsort(-rewards.flatten())
@@ -342,7 +360,11 @@ class MPPIOptimizer(Optimizer):
         best_actions = [action_samples[i] for i in sorted_prediction_inds[:3]]
         print("best rewards:", np.squeeze(np.array(best_rewards)))
         print("worst rewards: ", np.squeeze(np.array(worst_rewards)))
+        # breakpoint()
 
+        # visualize action, prediction and reward
+        self.visualize_action_pred_rew(predictions, goal, action_samples, rewards, sorted_prediction_inds)
+        
         # remove later
         for e, ind in enumerate(sorted_prediction_inds):
             if e > 4:
@@ -363,13 +385,14 @@ class MPPIOptimizer(Optimizer):
         for _ in range(50):
             env.og.sim.step()
         obs_w_lines = env.og_env.get_obs()[0]
-        obs_w_lines = env.get_image_obs(obs_w_lines)['rgb'] / 255
+        obs_w_lines = env.get_rgb_obs(obs_w_lines)['rgb'] / 255
         viewer_obs_w_lines = env.get_viewer_obs() / 255
-        goal_img = goal['rgb'][0]
+        goal_img = goal['gripper_obj_seg'][0]
+        print("shapes: ", obs_w_lines.shape, viewer_obs_w_lines.shape, goal_img.shape)
         # print("1----", viewer_obs_w_lines[0,0,:5])
         # print("2----", obs_w_lines[0,0,:5])
         # print("3----", goal_img[0,0,:5])
-        concat_img = hori_concatenate_image([viewer_obs_w_lines, obs_w_lines, goal_img])
+        concat_img = hori_concatenate_image([viewer_obs_w_lines, obs_w_lines])
         # plt.imshow(concat_img)
         # plt.show()
         os.makedirs(f"{folder_name}/traj", exist_ok=True)
@@ -399,10 +422,10 @@ class MPPIOptimizer(Optimizer):
 
         # print('best actions:', best_actions)
         # uncomment later
-        if t % self.log_every == 0:
-            self.log_best_plans(
-                f"{log_dir}/step_{t}_best_plan", vis_preds, goal, best_rewards
-            )
+        # if t % self.log_every == 0:
+        #     self.log_best_plans(
+        #         f"{log_dir}/step_{t}_best_plan", vis_preds, goal, best_rewards
+        #     )
 
         mu, std = self.update_dist(action_samples[:, n_ctxt - 1 :], rewards)
         print(f"mu: {mu}")

@@ -1,0 +1,3 @@
+_target_: vp2.mpc.objectives.ClassMismatchError
+key: gripper_obj_seg
+weight: 1
